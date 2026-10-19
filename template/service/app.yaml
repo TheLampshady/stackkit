@@ -1,0 +1,33 @@
+runtime: python313
+
+automatic_scaling:
+  # stackkit:begin always_on
+  # One instance stays up so visits never wait for a start (billed while idle)
+  min_instances: 1
+  # stackkit:end always_on
+  max_instances: 2
+
+entrypoint: gunicorn -w 1 -k uvicorn.workers.UvicornWorker app:app  # Change 'main:app' if your main FastAPI app is named differently
+
+env_variables:
+  NAMESPACE: "${NAMESPACE}"
+
+# stackkit:begin always_on
+inbound_services:
+  - warmup
+# stackkit:end always_on
+
+handlers:
+  - url: /_ah/warmup
+    script: auto
+
+  - url: /assets/(.*)
+    static_files: static/assets/\1
+    upload: static/assets/(.*)
+
+  - url: /api.*
+    script: auto
+
+  - url: /(.*)
+    static_files: static/index.html
+    upload: static/index.html

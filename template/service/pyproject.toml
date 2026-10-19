@@ -1,0 +1,100 @@
+[project]
+name = "service"
+version = "0.1.0"
+description = "stackkit-app FastAPI backend service"
+readme = "Readme.md"
+requires-python = "==3.13.*"
+dependencies = [
+    "fastapi[standard]>=0.141.1",
+    # stackkit:begin firebase
+    "firebase-admin>=7.7.0",
+    # stackkit:end firebase
+    "google-cloud-logging>=3.17.0",
+    "google-cloud-secret-manager>=2.31.0",
+    # stackkit:begin storage
+    "google-cloud-storage>=3.17.1",
+    # stackkit:end storage
+    # stackkit:begin agents
+    "google-adk>=2.12.0",
+    "google-cloud-aiplatform[adk,agent-engines]>=2.5.0",
+    # stackkit:end agents
+    # stackkit:begin ai
+    "google-genai>=2.31.0",
+    "anthropic[vertex]>=1.15.0",
+    # stackkit:end ai
+    "gunicorn>=26.2.0",
+    "pydantic-settings>=2.16.0",
+    "scalar-fastapi>=1.9.1",
+    "google-auth>=2.62.0",
+]
+
+[dependency-groups]
+test = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "pytest-socket>=0.8.0",
+    "httpx>=0.28.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+python_files = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-socket",
+    "--allow-hosts=127.0.0.1,localhost",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["."]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+
+[tool.ty.environment]
+python-version = "3.13"
+root = ["."]
+
+[[tool.ty.overrides]]
+include = ["app.py"]
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore"
+unresolved-attribute = "ignore"
+invalid-assignment = "ignore"
+
+[[tool.ty.overrides]]
+include = ["api/config_app.py"]
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore"
+
+# stackkit:begin ai
+[[tool.ty.overrides]]
+include = ["gcp_services/clients/gcp_vertex.py"]
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore"
+# stackkit:end ai
+
+[[tool.ty.overrides]]
+include = ["tests/*.py"]
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore"

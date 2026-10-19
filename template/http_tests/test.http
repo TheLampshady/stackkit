@@ -1,0 +1,22 @@
+### GET healthcheck
+
+GET {{base_url}}/api/healthcheck/
+
+# stackkit:begin storage
+### GET file list
+GET {{base_url}}/api/file-list/
+
+# stackkit:end storage
+# stackkit:begin database
+### GET database collections
+GET {{base_url}}/api/db-list/
+
+# stackkit:end database
+
+### POST request to your FastAPI endpoint
+POST {{base_url}}/api/query/
+Content-Type: application/json
+
+{
+  "text": "who captained deep space 9?"
+}

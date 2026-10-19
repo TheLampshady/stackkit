@@ -1,0 +1,12 @@
+# Dependencies for the Vertex AI custom prediction container, not the local
+# environment. Kept out of the uv workspace (see the root pyproject.toml) and
+# compiled to requirements.txt with `make -C notebooks requirements`.
+[project]
+name = "custom-model"
+version = "0.1.0"
+requires-python = "==3.13.*"
+dependencies = [
+    "google-cloud-aiplatform[prediction]>=2.5.0",
+    "fastapi",
+    "uvicorn",
+]

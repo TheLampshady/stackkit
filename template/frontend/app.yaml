@@ -1,0 +1,17 @@
+# Deploys the built site (dist/) to App Engine as a static single-page app.
+# Static files are served by Google's servers, so no instance runs for them.
+runtime: python313
+
+handlers:
+  # Anything that looks like a file (has an extension) is served from dist/:
+  # assets/*, favicon.svg, fonts, anything the build emits.
+  - url: /(.*\..*)
+    static_files: dist/\1
+    upload: dist/(.*\..*)
+    secure: always
+
+  # Everything else is a client-side route: always serve the root index.html.
+  - url: /.*
+    static_files: dist/index.html
+    upload: dist/index.html
+    secure: always

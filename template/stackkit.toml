@@ -1,0 +1,218 @@
+# stackkit manifest: read by the stackkit bootstrap skill, deleted from every
+# project it creates. The template runs as-is without it.
+#
+# A module is removed by deleting its `paths`, dropping it from the uv
+# workspace, deleting its `json_keys` (dotted paths, for JSON files that can't
+# hold comments), and deleting every `stackkit:begin <name>` ...
+# `stackkit:end <name>` block in the project's text files. A marker naming
+# several modules (`stackkit:begin <one>,<two>`) is deleted only when all are
+# removed.
+# `refs` are strings that should not survive a removal; any left over are
+# reported so prose can be fixed by hand.
+#
+# A `self_contained` module's paths are skipped when checking other modules'
+# refs.
+#
+# `only_without` lists files that only matter once the module is removed (a
+# fallback it replaces); they're deleted when the module is kept.
+#
+# `requires` lists modules a kept module can't work without; the bootstrap
+# refuses to remove them. An `implicit` module is never asked about: it's
+# removed on its own once no kept module requires it.
+
+[rules]
+# Each group must keep at least one module.
+keep_one_of = [["api", "frontend"], ["gae", "cloud_run"]]
+
+[values]
+# Placeholder strings in the template, replaced with the new project's values.
+name = "stackkit-app"           # package/workspace name, kebab-case
+display_name = "Stackkit App"   # human-facing title (frontend header, API title)
+
+[env]
+# Keys the bootstrap writes into the new project's .env (from .env.sample).
+keys = ["PROJECT_ID", "NAMESPACE", "VALID_DOMAINS"]
+
+[modules.api]
+summary = "The backend (FastAPI). Without it the project is a static site."
+paths = [
+    "service",
+    ".run/Service.run.xml",
+    "frontend/src/lib/api.ts",
+    "frontend/src/lib/api.test.ts",
+    "frontend/src/lib/types.ts",
+]
+workspace_member = "service"
+# The static site's own deploy; an API project serves the frontend itself
+only_without = ["frontend/app.yaml", "frontend/.gcloudignore", "frontend/Makefile"]
+refs = [
+    "service/",
+    "SERVICE_DIR",
+    "run-be",
+    "build-be",
+    "test-be",
+    "typecheck-be",
+    "@/lib/api",
+    "/api/",
+]
+
+[modules.frontend]
+summary = "A web page people open in a browser (React)."
+paths = ["frontend", ".run/Frontend.run.xml"]
+refs = ["frontend/", "bun ", "Vite", "run-fe", "build-fe"]
+
+[modules.agents]
+summary = "AI agents that run on their own (Google ADK), deployed separately. Their prompts live in the database."
+requires = ["ai", "database"]
+# Deploys on its own with its own copies of the shared clients, so other
+# modules' refs aren't checked inside it.
+self_contained = true
+paths = ["agent_service"]
+workspace_member = "agent_service"
+refs = ["agent_service", "adk-web", "adk-api", "deploy-agent", "sync-agents"]
+
+[modules.notebooks]
+summary = "Jupyter notebooks for AI/ML experiments."
+requires = ["ai"]
+paths = ["notebooks"]
+workspace_member = "notebooks"
+refs = ["notebooks/"]
+
+[modules.http_tests]
+summary = "Hand-run HTTP requests for the PyCharm HTTP client."
+requires = ["api"]
+paths = ["http_tests"]
+refs = ["http_tests"]
+
+[modules.database]
+summary = "Saves records between visits (Firestore)."
+requires = ["api", "firebase"]
+paths = [
+    "gcp/firestore.rules",
+    "gcp/firestore.indexes.json",
+    "gcp/bin/sync_db.sh",
+    ".run/sync-db.run.xml",
+    "notebooks/service_test.ipynb",
+]
+json_keys = { "gcp/firebase.json" = ["firestore", "emulators.firestore"] }
+refs = [
+    "firestore_db",
+    "FIRESTORE_DB_NAME",
+    "db-list",
+    "sync-db",
+    "sync_db",
+    "firestore.rules",
+    "firestore.indexes",
+]
+
+[modules.storage]
+summary = "Keeps uploaded files such as photos and PDFs (Cloud Storage)."
+requires = ["api", "firebase"]
+paths = [
+    "service/gcp_services/clients/gcp_storage.py",
+    "gcp/storage.rules",
+    "gcp/cors.json",
+]
+json_keys = { "gcp/firebase.json" = ["storage", "emulators.storage"] }
+refs = [
+    "gcp_storage",
+    "firestore_bucket_name",
+    "FIRESTORE_BUCKET_NAME",
+    "list_blobs",
+    "file-list",
+    "storage.rules",
+    "cors.json",
+    "signBlob",
+    "signed URLs",
+]
+
+[modules.auth_iap]
+summary = "Team-only access: Google's Identity-Aware Proxy in front of the whole app."
+paths = [
+    "service/gcp_services/clients/iap_auth.py",
+    "service/tests/test_iap_auth.py",
+]
+refs = ["iap_auth", "IAP_AUDIENCE", "LOCAL_USER_EMAIL", "--iap"]
+
+[modules.auth_firebase]
+summary = "Accounts people sign up for (Firebase Auth). The server side only; login screens are built on top."
+requires = ["api", "firebase"]
+paths = [
+    "service/gcp_services/clients/fb_auth.py",
+    "gcp/bin/test_auth.py",
+]
+json_keys = { "gcp/firebase.json" = ["emulators.auth"] }
+refs = ["fb_auth", "firebase_auth_required", "auth_client", "test_auth.py"]
+
+[modules.ai]
+summary = "One-off AI calls from the API (Gemini or Claude on Vertex AI)."
+requires = ["api"]
+paths = ["service/gcp_services/clients/gcp_vertex.py"]
+refs = ["gcp_vertex", "default_text_model", "DEFAULT_TEXT_MODEL"]
+
+[modules.firebase]
+summary = "The Firebase app and its local emulator, shared by database, storage and auth_firebase."
+implicit = true
+requires = ["gcp"]
+paths = [
+    "service/gcp_services/clients/gcp_services.py",
+    "service/gcp_services/clients/fb_config.py",
+    "gcp/firebase.json",
+    "gcp/.firebaserc",
+    "gcp/.gitignore",
+    "gcp/bin/emulator.sh",
+    "gcp/commands/provision.py",
+    ".run/FB Emulator.run.xml",
+    ".aiexclude",
+]
+refs = [
+    "firebase_admin",
+    "firebase.json",
+    "fb_config",
+    "emulator.sh",
+    "use_emulator",
+    "USE_EMULATOR",
+    "make emulator",
+    "clients.gcp_services",
+]
+
+[modules.gae]
+summary = "Deploys to App Engine: free custom domains, no streaming responses."
+requires = ["gcp"]
+paths = [
+    "service/app.yaml",
+    "gcp/dispatch.yaml",
+    "gcp/commands/split_cookie.py",
+    "gcp/bin/setup_iam.sh",
+    "frontend/app.yaml",
+    "frontend/.gcloudignore",
+    "frontend/Makefile",
+]
+refs = [
+    "deploy-app",
+    "deploy-gae",
+    "dispatch.yaml",
+    "split-cookie",
+    "split_cookie",
+    "setup-iam",
+    "setup_iam",
+    "_ah/warmup",
+]
+
+[modules.cloud_run]
+summary = "Deploys to Cloud Run: scales to zero and streams, custom domains need a load balancer."
+requires = ["api"]
+paths = ["service/Procfile"]
+refs = ["deploy-cr", "Procfile", "run.app", "gcloud run"]
+
+[modules.always_on]
+summary = "Keeps one server instance running so visits never wait for a start. Billed while idle."
+requires = ["api"]
+refs = ["min_instances", "min-instances=1"]
+
+[modules.gcp]
+summary = "The gcp/ tooling folder: emulator, provisioning and App Engine helpers."
+implicit = true
+paths = ["gcp"]
+workspace_member = "gcp"
+refs = ["gcp/cli.py", "make -C gcp", "-C gcp"]

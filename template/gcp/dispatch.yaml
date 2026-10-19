@@ -1,0 +1,15 @@
+# Routes all requests to specific services.
+#
+# To Remove the rules, replace files
+# dispatch: []
+
+dispatch:
+  # stackkit:begin api
+  # Handle API endpoint service
+  - url: "*/api/*"
+    service: api
+  # stackkit:end api
+
+  # default static service (this is default already)
+  - url: "*/*"
+    service: default
