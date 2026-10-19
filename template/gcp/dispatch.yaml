@@ -1,0 +1,13 @@
+# Routes all requests to specific services.
+#
+# To Remove the rules, replace files
+# dispatch: []
+
+dispatch:
+  # Handle API endpoint service
+  - url: "*/api/*"
+    service: api
+
+  # default static service (this is default already)
+  - url: "*/*"
+    service: default

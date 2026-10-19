@@ -1,0 +1,38 @@
+# stackkit manifest: read by the stackkit bootstrap skill, deleted from every
+# project it creates. The template runs as-is without it.
+#
+# A module is removed by deleting its `paths`, dropping it from the uv
+# workspace, and deleting every `stackkit:begin <name>` ... `stackkit:end <name>`
+# block in the project's text files. `refs` are strings that should not survive
+# a removal; any left over are reported so prose can be fixed by hand.
+
+[values]
+# Placeholder strings in the template, replaced with the new project's values.
+name = "stackkit-app"           # package/workspace name, kebab-case
+display_name = "Stackkit App"   # human-facing title (frontend header, API title)
+
+[env]
+# Keys the bootstrap writes into the new project's .env (from .env.sample).
+keys = ["PROJECT_ID", "NAMESPACE", "VALID_DOMAINS", "USE_EMULATOR"]
+
+[modules.frontend]
+summary = "A web page people open in a browser (React)."
+paths = ["frontend", ".run/Frontend.run.xml"]
+refs = ["frontend/", "bun ", "Vite", "run-fe", "build-fe"]
+
+[modules.agents]
+summary = "AI agents that run on their own (Google ADK), deployed separately."
+paths = ["agent_service"]
+workspace_member = "agent_service"
+refs = ["agent_service", "adk-web", "adk-api", "deploy-agent", "sync-agents"]
+
+[modules.notebooks]
+summary = "Jupyter notebooks for AI/ML experiments."
+paths = ["notebooks"]
+workspace_member = "notebooks"
+refs = ["notebooks/"]
+
+[modules.http_tests]
+summary = "Hand-run HTTP requests for the PyCharm HTTP client."
+paths = ["http_tests"]
+refs = ["http_tests"]

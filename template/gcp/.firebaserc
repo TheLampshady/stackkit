@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "demo-dev",
+    "prod": "demo-prod"
+  }
+}

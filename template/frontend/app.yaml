@@ -1,0 +1,17 @@
+runtime: python313
+service: <TODO>
+
+handlers:
+  # static assets
+  - url: /(.*\..*)
+    static_files: \1
+    upload: (.*)
+
+  # index files
+  - url: /(.+)/
+    static_files: \1/index.html
+    upload: (.+)/index.html
+
+  - url: /
+    static_files: index.html
+    upload: index.html

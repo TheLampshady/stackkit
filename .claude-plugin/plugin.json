@@ -1,0 +1,12 @@
+{
+  "name": "stackkit",
+  "description": "Turns a plain-language brief into a working, slim web stack. Interviews a non-technical person in plain words, then copies a runnable FastAPI + Firebase + React template, removes the parts the project doesn't need, fills in its values, and proves it passes its checks before handing it over.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Lampshady",
+    "email": "lampshady24@gmail.com"
+  },
+  "homepage": "https://github.com/TheLampshady/stackkit",
+  "repository": "https://github.com/TheLampshady/stackkit",
+  "license": "MIT"
+}

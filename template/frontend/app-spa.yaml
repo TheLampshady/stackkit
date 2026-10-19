@@ -1,0 +1,14 @@
+runtime: python313
+service: <TODO>
+
+handlers:
+  # Anything that looks like a file (has an extension) is served from disk:
+  # assets/*, favicon.svg, models/*, fonts, anything the build emits.
+  - url: /(.*\..*)
+    static_files: \1
+    upload: (.*\..*)
+
+  # Everything else is a client-side route: always serve the root index.html.
+  - url: /.*
+    static_files: index.html
+    upload: index.html

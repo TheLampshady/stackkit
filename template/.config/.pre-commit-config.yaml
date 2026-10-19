@@ -1,0 +1,106 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.17.1
+    hooks:
+      # Run the linter.
+      - id: ruff-check
+        types_or: [ python, pyi ]
+        args: [ --fix ]
+      # Run the formatter. Avoids notebooks
+      - id: ruff-format
+        types_or: [ python, pyi ]
+
+  # ----------------------------
+  # Built-in useful hooks
+  # ----------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-json
+        exclude: '^frontend/tsconfig.*\.json$'
+      - id: check-added-large-files
+        exclude: '^uv\.lock$'
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: detect-private-key
+
+  # ----------------------------
+  # Static typing (Astral ty)
+  # Uses local ty via uv to access project dependencies and pyproject.toml config
+  # ----------------------------
+  - repo: local
+    hooks:
+      - id: ty-service
+        name: ty (service)
+        entry: bash -c "cd service && uv run ty check ."
+        language: system
+        pass_filenames: false
+        files: '^service/'
+        types: [python]
+
+      # stackkit:begin agents
+      - id: ty-agents
+        name: ty (agents)
+        entry: bash -c "cd agent_service && uv run ty check ."
+        language: system
+        pass_filenames: false
+        files: '^agent_service/'
+        types: [python]
+      # stackkit:end agents
+
+
+  # ----------------------------
+  # Pytest - separate processes to avoid gcp_services namespace collision
+  # ----------------------------
+  - repo: local
+    hooks:
+      - id: pytest-service
+        name: pytest (service)
+        entry: bash -c "cd service && uv run pytest tests -q"
+        language: system
+        pass_filenames: false
+        files: '^service/'
+        types: [python]
+
+      # stackkit:begin agents
+      - id: pytest-agents
+        name: pytest (agents)
+        entry: bash -c "cd agent_service && uv run pytest tests -q"
+        language: system
+        pass_filenames: false
+        files: '^agent_service/'
+        types: [python]
+      # stackkit:end agents
+
+  # stackkit:begin frontend
+  # ----------------------------
+  # Frontend - ESLint, TypeScript, Vitest
+  # ----------------------------
+  - repo: local
+    hooks:
+      - id: fe-lint
+        name: fe-lint
+        entry: bash -c 'cd frontend && bun run lint'
+        language: system
+        pass_filenames: false
+        files: '^frontend/'
+        types_or: [ts, tsx, javascript, jsx]
+
+      - id: fe-typecheck
+        name: fe-typecheck
+        entry: bash -c 'cd frontend && bun run typecheck'
+        language: system
+        pass_filenames: false
+        files: '^frontend/'
+        types_or: [ts, tsx]
+
+      - id: fe-test
+        name: fe-test
+        entry: bash -c 'cd frontend && bun run test'
+        language: system
+        pass_filenames: false
+        files: '^frontend/'
+        types_or: [ts, tsx]
+  # stackkit:end frontend

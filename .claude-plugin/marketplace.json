@@ -1,0 +1,14 @@
+{
+  "name": "stackkit-marketplace",
+  "owner": {
+    "name": "Lampshady",
+    "email": "lampshady24@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "stackkit",
+      "source": "./",
+      "description": "Turns a plain-language brief into a working, slim web stack: interviews a non-technical person, copies a runnable template, removes what the project doesn't need, and verifies it before handing it over."
+    }
+  ]
+}

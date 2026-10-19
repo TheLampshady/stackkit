@@ -1,0 +1,27 @@
+{
+  "firestore": {
+    "database": "<REPLACE ME or (default)>",
+    "location": "nam5",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "emulators": {
+    "auth": {
+      "port": 8071
+    },
+    "firestore": {
+      "port": 8070
+    },
+    "ui": {
+      "enabled": true,
+      "port": 8060
+    },
+    "singleProjectMode": true,
+    "storage": {
+      "port": 9199
+    }
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}
