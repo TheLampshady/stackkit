@@ -19,13 +19,15 @@ Check quietly with `which uv make git` (`which` never needs permission). Don't l
 - **Native Windows without WSL:** this setup needs `make`, which Windows doesn't have. Tell them plainly that it currently needs WSL (a free Windows feature) and offer to walk them through turning it on. Don't work around it.
 - **No `git`:** fine. Carry on; the checks skip git.
 
-Before the first question, tell them once: "Claude Code will ask your permission a couple of times: to install a free tool if one is missing, and to start building once we agree the plan. Say yes to those." Drop the install part if nothing needs installing.
+Before the first question, tell them once: "Claude Code will ask your permission a couple of times: to install a free tool if one is missing, and to start building once we agree the plan. Say yes to those. And if a question isn't clear, just ask me for an example." Drop the install part if nothing needs installing.
 
 ### 2. Interview
 
 Ask in this order, one at a time, in these words or close to them. Skip any question the brief already answered, and say what you assumed. Some questions are asked only when an earlier answer calls for them.
 
 Each question has a **tech impact**: what the answer changes under the hood, and what it costs. Don't volunteer it. Use it when they ask "what does that mean?" or "why does it matter?", in the same plain words.
+
+Each question also has **examples** (after the table). Offer them when the person asks for one, says "I'm not sure", or answers something that doesn't fit the choices. Pick the two or three closest to their brief rather than reading the whole list, then ask the question again.
 
 | # | Ask | Default to offer | Sets | Tech impact (only if they ask) |
 |---|-----|------------------|------|-------------------------------|
@@ -43,6 +45,53 @@ Each question has a **tech impact**: what the answer changes under the hood, and
 | 9 | *(only if there's a server)* "When someone opens it after nobody's used it for a while, is a wait of a few seconds okay? That keeps it cheapest. Or should it always answer instantly, for a bit more?" | a short wait is fine | wait → remove `always_on`. instantly → keep `always_on` | Instantly keeps one copy of the server running all the time. Otherwise it switches off when nobody's using it, costs nothing while off, and the first visit after a quiet spell waits a few seconds while it starts (Cloud Run gets extra power while starting to shorten that wait, for a fraction of a cent each time). See the cost guide below for the price on each host. |
 | 10 | "I'll call it **Bakery Orders**. Okay, or would you like another name?" | a two- or three-word name guessed from the brief and answers | `--display-name`; `--name` and `NAMESPACE` are its kebab-case form (`bakery-orders`) | The name shows on the page and in the project's folder and code. |
 | 11 | "I'll build it in this folder: `<path>`. Okay?" | the current folder if it's empty, otherwise `<current folder>/<kebab-name>` | `--dest` | — |
+
+#### Examples
+
+Short, everyday cases for each answer. Swap in details from their brief when you can ("like your order list").
+
+- **1. What it does, and who for**
+  - "A page where my bakery staff see today's orders and tick them off."
+  - "A sign-up form for our book club's monthly meetups."
+  - "A site with our restaurant's menu, hours and address."
+  - "A tool that reads customer emails and drafts a reply for me to check."
+- **2. Opened in a web browser**
+  - Yes: a menu site, a staff dashboard, a booking form, a chat page.
+  - No: the behind-the-scenes part of a phone app, or something only other software talks to, like a service a shop's till sends sales to.
+- **3. Remembers things between visits**
+  - Yes: orders and whether they're done, sign-ups from a form, a list of customers, comments people leave.
+  - No: a menu or price list you change by editing the site itself, a calculator that works things out on the spot.
+- **4. Uploads or keeps files**
+  - Yes: customers send photos of a damaged item, staff upload invoices as PDFs, members share a spreadsheet.
+  - No: the logo, photos and pictures that are part of the site's design; links to files kept somewhere else, like a shared drive.
+- **5. Who uses it**
+  - Only your team: a staff rota, an internal stock list, a dashboard for the office.
+  - Customers with their own accounts: an online shop where people see their past orders, a members' area, a booking site where people manage their bookings.
+  - Anyone: a menu, a landing page, a contact form, an event page.
+- **5b. Work email ending**
+  - "@mariasbakery.com" if everyone's email ends that way. If people use personal Gmail addresses, team-only access can't tell them apart by the ending; say so, and suggest "anyone" or customer accounts instead.
+- **6. Uses AI**
+  - Yes: write a summary of today's orders, draft replies to reviews, sort messages into "urgent" and "can wait", answer questions about your opening hours.
+  - No: showing and saving information, forms, lists, totals and simple sums.
+- **6b. One job, or an assistant**
+  - (a) One job when asked: "summarise this", "draft a reply to this email", "sort these messages", "turn these notes into a tidy list".
+  - (b) An assistant: a chat helper that answers customers' questions by looking up your products, or one that books an appointment by checking the calendar, asking follow-up questions and confirming.
+- **7. Behind the scenes**
+  - Yes: emails a receipt after an order, takes card payments, pulls in the weather or exchange rates, sends a reminder every Monday.
+  - No: pages people read, with links and pictures. Opening an email app with a "mailto" link counts as no.
+- **8. Own web address**
+  - Own: orders.mariasbakery.com, bookclub.org, a name you'd print on a menu or business card.
+  - Google's: an address like bakery-orders-abc123.a.run.app, fine for a team tool or something only shared by link.
+- **8b. Word by word, or all at once**
+  - Word by word: a chat assistant whose reply appears as it's written, like typing; a progress bar on a long task.
+  - All at once: the reply shows up complete after a few seconds' pause, which is fine for summaries, drafts and most forms.
+- **9. Instant, or a short wait**
+  - A short wait is fine: a staff tool used a few times a day, a sign-up form, anything where a few seconds now and then won't matter.
+  - Instantly: a checkout people might give up on, a booking page shared at a busy event, a tool used in front of customers.
+- **10. Name**
+  - "Bakery Orders", "Book Club Signups", "Menu Site". Two or three plain words; it can change later.
+- **11. Folder**
+  - "Here is fine", or a place they'll remember, like a "Projects" folder in their home folder.
 
 #### Always, without asking
 
