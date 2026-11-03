@@ -27,6 +27,26 @@ setup-iam:
 	@bin/setup_iam.sh
 # stackkit:end gae
 
+# stackkit:begin auth_iap
+# ------ IAP FIRST-TIME SETUP ------
+# Run once per Google Cloud project by whoever looks after it, in this order:
+#   iap-prepare, (console steps it prints), iap-client, iap-apply, iap-grant.
+# If sign-in is already set up for the project, only iap-grant is needed.
+.PHONY: iap-prepare iap-client iap-apply iap-grant
+iap-prepare:
+	@bin/setup_iap.sh prepare
+
+iap-client:
+	@bin/setup_iap.sh client
+
+iap-apply:
+	@bin/setup_iap.sh apply
+
+# Usage: make iap-grant MEMBER=group:team@example.com [SCOPE=project]
+iap-grant:
+	@bin/setup_iap.sh grant "$(MEMBER)" "$(or $(SCOPE),service)"
+# stackkit:end auth_iap
+
 # stackkit:begin firebase
 # ------ FIREBASE EMULATOR ------
 

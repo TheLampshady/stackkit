@@ -131,8 +131,20 @@ summary = "Team-only access: Google's Identity-Aware Proxy in front of the whole
 paths = [
     "service/gcp_services/clients/iap_auth.py",
     "service/tests/test_iap_auth.py",
+    "gcp/bin/setup_iap.sh",
 ]
-refs = ["iap_auth", "IAP_AUDIENCE", "LOCAL_USER_EMAIL", "--iap"]
+refs = [
+    "iap_auth",
+    "IAP_AUDIENCE",
+    "LOCAL_USER_EMAIL",
+    "--iap",
+    "setup_iap",
+    "iap-prepare",
+    "iap-client",
+    "iap-apply",
+    "iap-grant",
+    "IAP_OAUTH",
+]
 
 [modules.auth_firebase]
 summary = "Accounts people sign up for (Firebase Auth). The server side only; login screens are built on top."

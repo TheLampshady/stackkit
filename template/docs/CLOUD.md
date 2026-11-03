@@ -215,6 +215,47 @@ metadata server at first request. Set `IAP_AUDIENCE` to override, for example on
 Engine (`/projects/<number>/apps/<project-id>`). Locally set `LOCAL_USER_EMAIL` in
 `.env`; it is ignored when deployed.
 
+### IAP First-Time Setup
+
+> **IAP deployments only.** Run once per Google Cloud project by whoever looks after it
+> (it needs project owner rights). Nothing here runs on its own.
+
+One custom OAuth client serves every IAP site in the project; its ID and secret live in
+Secret Manager as `IAP_OAUTH_CLIENT_ID` and `IAP_OAUTH_CLIENT_SECRET`. Access is plain
+IAM: the role `roles/iap.httpsResourceAccessor`, no code and no allowlist in the app.
+
+If someone has already set up sign-in for the project, skip to step 4.
+
+```bash
+cd gcp
+make iap-prepare    # 1. enable IAP; prints the console steps for 2
+make iap-client     # 3. save the OAuth client ID and secret to Secret Manager
+make iap-apply      #    point the whole project's IAP at that client
+make iap-grant MEMBER=group:team@example.com SCOPE=project          # 4. your own team, every site
+make iap-grant MEMBER=user:client@example.com                       #    one person, this site only
+```
+
+2. **Console, no command exists.** Google Auth Platform: set the app name and support
+   email (Branding), choose the Audience, then create a *Web application* client named
+   "IAP" and add the redirect URI `https://iap.googleapis.com/v1/oauth/clientIds/CLIENT_ID:handleRedirect`.
+   - **Internal**: only people in your Google Workspace organization can sign in.
+   - **External**: any Google account can sign in, and IAM decides who gets through. Use it
+     when clients or other outsiders need access. Google Workspace isn't required.
+
+#### Handing this to an admin
+
+For someone who doesn't look after Google Cloud, send this to whoever does:
+
+> Please set up Google sign-in (Identity-Aware Proxy) for the Google Cloud project `<PROJECT_ID>`, one time. You need owner rights. In the project's `gcp/` folder run `make iap-prepare`, follow the console steps it prints, then run `make iap-client`, `make iap-apply`, and `make iap-grant MEMBER=group:team@example.com SCOPE=project`. Add outside people one at a time with `make iap-grant MEMBER=user:client@example.com`. Details: the "IAP First-Time Setup" section of `docs/CLOUD.md`.
+
+Grant your own groups at the project level and each outside person on the one site they
+should see, so one client can't open another's site. `SCOPE=project` reaches every IAP
+site in the project. `make iap-prepare` and `make iap-grant` need the site deployed first
+for App Engine, and for Cloud Run the service name is `NAMESPACE`.
+
+IAP with other identity providers (Microsoft, SAML, email and password) needs Identity
+Platform and is not set up here; use Firebase Auth when people sign themselves up.
+
 ### IAP Sessions and Long-Open Tabs
 
 > **IAP deployments only.** Apps that use Firebase Auth alone don't need this: the

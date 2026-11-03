@@ -39,6 +39,8 @@ Pass `VALID_DOMAINS` only for a team-only project. It prints JSON: `removed` lis
 
 If the plan lists secret names, add each one to two places in the new project, with Edit: the `SECRET_KEY_NAMES` list in `service/app_settings.py` (replacing the `"TODO"` placeholder; do the same in `agent_service/app_settings.py` if it exists) and the `SECRETS=()` array in `gcp/bin/setup_iam.sh`. Add a blank `NAME=` line for each to `.env.sample` and `.env`. Never write a real value. Tell the person at hand-over that they will need to put the keys in `.env` for testing, and that whoever looks after their Google Cloud adds them to Secret Manager. Never create an API key for Claude or Gemini: they need none.
 
+If the project kept `auth_iap`, tell them at hand-over, in plain words, that sign-in is set up once per Google Cloud project, and that stackkit doesn't do it. Tailor the "IAP First-Time Setup" section of `docs/CLOUD.md` with Edit to the answer at 5d: (b) already set up → keep only `make iap-grant`; (c) they do it → keep the full order; (a) someone else or don't know → keep the full order and the "Handing this to an admin" note, and give them that note in your reply to forward, filled in with the project's name and the people to let in (5b, with client emails). If 5b was yes, mention that clients are added one by one with `make iap-grant MEMBER=user:<email>`. Never run these commands and never ask for the OAuth client secret.
+
 ## 3. Prove it works
 
 ```bash
