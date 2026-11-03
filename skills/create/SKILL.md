@@ -37,6 +37,8 @@ Pass `VALID_DOMAINS` only for a team-only project. It prints JSON: `removed` lis
 
 `leftover_refs` lists lines in the new project that still mention removed parts, almost all in `Readme.md`, `AGENTS.md` and `docs/`. Edit each so it no longer mentions them: delete rows and sentences about the removed part, and reword the rest. Touch prose only, and only files inside the new project. If a hit is in code, stop and tell the developer who maintains stackkit, because the template's manifest is missing something.
 
+If the plan lists secret names, add each one to two places in the new project, with Edit: the `SECRET_KEY_NAMES` list in `service/app_settings.py` (replacing the `"TODO"` placeholder; do the same in `agent_service/app_settings.py` if it exists) and the `SECRETS=()` array in `gcp/bin/setup_iam.sh`. Add a blank `NAME=` line for each to `.env.sample` and `.env`. Never write a real value. Tell the person at hand-over that they will need to put the keys in `.env` for testing, and that whoever looks after their Google Cloud adds them to Secret Manager. Never create an API key for Claude or Gemini: they need none.
+
 ## 3. Prove it works
 
 ```bash
