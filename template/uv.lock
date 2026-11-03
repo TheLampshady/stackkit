@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.13.*"
 
 [manifest]
@@ -810,6 +810,7 @@ version = "0.1.0"
 source = { virtual = "gcp" }
 dependencies = [
     { name = "aiohttp" },
+    { name = "google-cloud-firestore" },
     { name = "python-dotenv" },
     { name = "typer" },
 ]
@@ -817,6 +818,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.14.5" },
+    { name = "google-cloud-firestore", specifier = ">=2.19.0" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
     { name = "typer", specifier = ">=0.27.3" },
 ]

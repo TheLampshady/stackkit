@@ -30,7 +30,7 @@ else
     if [ ! -f "${FIRESTORE_DATA}/firebase-export-metadata.json" ]; then
         echo "Warning: No existing data found in ${FIRESTORE_DATA}."
         # stackkit:begin database
-        echo "To sync data from remote, run: make sync-db"
+        echo "To sync data from remote, run: make -C gcp sync-db"
         # stackkit:end database
         echo ""
     fi

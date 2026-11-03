@@ -106,6 +106,8 @@ Set automatically by the platform, never in `.env`: `K_SERVICE` (Cloud Run), `GA
 
 `make emulator` seeds from `gcp/firestore_data`; `make emulator-empty` (run from `gcp/`) starts with a clean database.
 
+To work locally on the data in the cloud, stop the emulator (Ctrl+C, and wait for it to finish saving) and run `make -C gcp sync-db`. It copies the database `.env` points at (`FIRESTORE_DB_NAME`, else `NAMESPACE`) into `gcp/firestore_data`, into the emulator's `(default)` database that the app reads locally, and asks before replacing anything. Uploaded files are not copied.
+
 ### Local URLs
 
 | Service | URL |

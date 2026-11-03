@@ -51,8 +51,11 @@ iap-grant:
 # ------ FIREBASE EMULATOR ------
 
 # stackkit:begin database
+# Copy the cloud database (.env's) into the emulator's saved data. Stop the
+# emulator first; asks before replacing anything.
+.PHONY: sync-db
 sync-db:
-	@bin/sync_db.sh "${PROJECT_ID}" "${FIRESTORE_DATA}"
+	@bin/sync_db.sh "${PROJECT_ID}" "$(DB_NAME)" "${FIRESTORE_DATA}"
 
 # stackkit:end database
 .PHONY: emulator
