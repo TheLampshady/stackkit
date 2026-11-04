@@ -60,7 +60,15 @@ If the project kept `auth_iap`, tell them at hand-over, in plain words, that Goo
 
 If question 5 was (b), a staff area: build it now, because the person agreed to it and the base has no sign-in screen. Protect each staff route on the server with `@firebase_auth_required()`; add a small sign-in screen for staff with Google sign-in from Firebase's web library (add it to `frontend/package.json`), which sends the signed-in staff member's token with each staff request; and put the staff pages behind it. The public pages stay open. `VALID_DOMAINS` decides who counts as staff.
 
-For each scheduled job in the plan, add a server route that does the job when called, protected so only staff or Google's timer can call it, and a make target that calls it by hand (`make reminders`). Say at hand-over that a timer at Google runs it on schedule once it's online.
+Build each piece of background work in the plan as a first version, by what starts it and how long it takes (questions 7 and 7b):
+
+- **Quick, on a timer, with a server:** a server route that does the work when called, protected so only staff or Google's timer can call it, and a make target that calls it by hand (`make reminders`).
+- **Long, or a project with no server:** a job. Copy `job_service/jobs/example.py` to `job_service/jobs/<name>.py`, put the work in its `main()`, and add a test like `tests/test_example_job.py`. On a timer, note the time in the hand-over: `make schedule-job JOB=<name> SCHEDULE="<cron>" TIME_ZONE=<zone>` sets it once it's online. Delete the example job once a real one exists, keeping its test pattern.
+- **Long, and a person waits:** a job as above, started by a server route. The route saves a "working on it" record in the database and returns at once; the job updates the record when done, and the page checks the record until it's finished. Online, the route starts the job through Cloud Run's API (the `google-cloud-run` library: `JobsClient.run_job` with an environment override carrying the record's id), which needs `roles/run.developer` for the server's account, granted next to its other roles in `gcp/bin/setup_iam.sh`. On this computer (`settings.is_local`), the route runs the job's `main()` as a background task instead, so it works without Google.
+- **Another website sending something** (a payment notice): a server route that receives it and checks it really came from that service, as its instructions describe.
+- **A reaction to a new file or record:** stackkit doesn't have this part yet. Build it by hand, following `${CLAUDE_PLUGIN_ROOT}/skills/create/reactions.md`, and say at hand-over that it's a first version outside the parts stackkit tests.
+
+Say at hand-over what each one does, how to run it by hand, and that a timer at Google runs the scheduled ones once it's online.
 
 ## 3. Move the code across
 
@@ -87,6 +95,7 @@ Tell them in three or four plain sentences, then print the summary below:
 - when adding: what was added, that their own changes were kept, and which files were fitted together with them (`merged` and the conflicts you resolved), so they can look them over. If the project is in git, say the changes aren't saved yet
 - when moving a project: what came across, anything that didn't, and where the old files are (the untouched old folder, or `<folder>-before-stackkit` after converting), so they can compare and delete them when they're happy. After converting, if the folder has git history, say the change is ready to save as one step but not saved yet; don't commit it
 - how to start it: `make run`, then open http://localhost:8000. If it kept `database` or `storage`, saving only works while the local database copy runs too: `make emulator` in a second window.
+- with background work: how to run each one by hand (`make run-job JOB=<name>`); with only background work, that replaces `make run` and the web address.
 - who puts it online, from question 12: (a) or (c) → end the hand-over with a short, ready-to-send note for that person: what the project needs at Google (from the summary's checklist), the access it takes ("Google Cloud Access" in `docs/ENVIRONMENTS.md`), and the commands. (b) → give them those steps directly, starting with the access they need.
 - what's not done yet: stackkit sets up the base, not the features, so the brief's own screens (and sign-up and login, for customer accounts) come next. When moving a project, the moved app is already there; what's left is only what didn't come across. It runs on this computer for now. Putting it on the internet is done outside stackkit, by whoever they named at question 12; the project is named so it can sit alongside other apps in a shared Google Cloud project. Don't offer to deploy it.
 

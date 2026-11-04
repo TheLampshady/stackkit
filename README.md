@@ -41,11 +41,12 @@ Each answer keeps or removes a module, so the project is only as big as the brie
 | Only the team uses it | `auth_iap` (Identity-Aware Proxy) |
 | Customers have their own accounts | `auth_firebase` (Firebase Auth; login screens are built later, by other kits) |
 | It uses AI: one job when asked / an assistant that acts | `ai` (Gemini/Claude on Vertex AI) / plus `agents` (ADK) |
+| Work that takes more than a minute, or runs on a timer with nothing to open | `jobs` (Cloud Run jobs, built from source; no Docker) |
 | None of the above, and nothing behind the scenes | no `api`: a static site |
 | Its own web address / Google's address | `gae` (App Engine) / `cloud_run` (Cloud Run) |
 | Always ready (costs more) / cheapest, with a short wait after quiet spells (asked whenever there's a server) | `always_on` (one instance kept running) / scale to zero; both capped at 2 instances |
 
-Some modules are never asked about: `firebase` (the app and its local emulator) and `gcp` (the tooling folder) go once nothing kept needs them. `notebooks` is for developers.
+Some modules are never asked about: `firebase` (the app and its local emulator), `shared` (the Google clients every server folder copies) and `gcp` (the tooling folder) go once nothing kept needs them. `notebooks` is for developers.
 
 ## How optional parts are removed
 

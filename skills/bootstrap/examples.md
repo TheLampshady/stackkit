@@ -36,10 +36,16 @@ Short, everyday cases for each answer. Offer two or three of the closest when th
 - **6b. One job, or an assistant**
   - (a) One job when asked: "summarise this", "draft a reply to this email", "sort these messages", "turn these notes into a tidy list".
   - (b) An assistant: a chat helper that answers customers' questions by looking up your products, or one that books an appointment by checking the calendar, asking follow-up questions and confirming.
-- **7. Behind the scenes**
-  - Yes: emails a receipt after an order, takes card payments, pulls in the weather or exchange rates, sends a reminder every Monday.
-  - No: pages people read, with links and pictures. Opening an email app with a "mailto" link counts as no.
-- **7b. Services with a key**
+- **7. What makes it do something**
+  - (a) A person: someone fills in a booking form, a member uploads a photo, staff click "mark as paid", a customer types a question to the AI.
+  - (b) Something arrives on its own: a photo lands in the shared folder and should be shrunk, another app adds orders that should be checked, the payment service says a payment went through.
+  - (c) A timer: a reminder email the day before each booking, a summary of the week every Friday, fetching the sprint board every morning.
+  - (d) Nothing: a menu, opening hours, a portfolio. Opening an email app with a "mailto" link counts as nothing.
+- **7b. Takes more than a minute**
+  - (a) Quick: saving a form, sending one email, AI writing a short reply, looking up a price.
+  - (b) Long, and someone waits: AI reading a 200-page contract they just uploaded, turning a meeting recording into notes, checking a spreadsheet of 5,000 rows. The page says "working on it" and shows the result when it's ready.
+  - (c) Long, and nobody waits: AI sorting every ticket on the board each morning, a monthly report across all orders, emailing 2,000 members.
+- **7c. Services with a key**
   - Yes: Stripe or Square for card payments, SendGrid or Mailgun for email, a weather or exchange-rate service, Twilio for text messages.
   - No: Claude or Gemini (no key needed, the project signs in itself), Google's own database and file storage (same), anything that needs no sign-up.
   - If they name an AI service from another company (like OpenAI), say that Claude and Gemini are built in and need no key, and ask if one of those will do. If they still want it, add its key as a secret.

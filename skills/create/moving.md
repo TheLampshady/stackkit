@@ -36,7 +36,7 @@ The template's targets and tooling stay as they are: adapt the moved code to Vit
 | Database access and models | Pydantic models and the Firestore client from `gcp_services` (`AGENTS.md`, "Firebase Client Access") |
 | Sign-in | The sign-in chosen in the interview (`auth_iap` or `auth_firebase`) |
 | AI calls | `shared/gcp_services/clients/gcp_vertex.py`, or an agent in `agent_service/agents/` |
-| Background jobs and scripts | `api_service/` (Python) or `frontend/scripts/` (TypeScript), each with a make target |
+| Background jobs and scripts | Long or scheduled work: a job in `job_service/jobs/` (Python). Quick work the server runs: `api_service/`. Build scripts: `frontend/scripts/` (TypeScript). Each with a make target |
 
 Never keep the old layout beside the new one: no `legacy/`, `old/`, `src/`, `app/` or `public/` at the root.
 
@@ -87,7 +87,7 @@ These change what the app does for its users, so the person chooses. Ask about e
 | Sign-in with existing accounts (NextAuth/Auth.js, Clerk, Auth0, Supabase Auth) | The accounts can't come across on their own | Public site with staff pages: **(a)** a staff area (question 5(b)): staff sign in with Google, the public pages stay open. Whole site for staff only: **(a)** Google sign-in in front of everything (5(c)). Customers who come back to their own things: **(a)** customer accounts (5(d)); people make a new account the first time, or whoever puts it online imports them. **(b)** Keep their current sign-in service, connected with a key |
 | Pages that must be found in search engines (a public blog, marketing pages, rendered on the server) | stackkit's page is built in the visitor's browser | **(a)** Keep them as normal pages; search engines read most of them, and it's simplest. **(b)** Keep the most important ones as plain pages in `frontend/public/` |
 | Live updates (websockets, live chat, server-sent events) | Only Cloud Run sends replies as they happen | **(a)** Host on Cloud Run (Google's web address). **(b)** Own web address; updates arrive when the page refreshes |
-| Scheduled jobs (Vercel cron, a worker, a queue) | stackkit doesn't run anything on a timer | **(a)** Move the job to a server route plus a make target; a timer at Google runs it once it's online. **(b)** Leave it out for now |
+| Scheduled jobs (Vercel cron, a worker, a queue) | stackkit's timer starts work, but doesn't run a queue | **(a)** Quick work: a server route plus a make target. Long work: a job in `job_service/jobs/` (`jobs`). A timer at Google runs either once it's online. **(b)** Leave it out for now |
 | Files kept elsewhere (S3, Cloudinary, Vercel Blob, UploadThing) | stackkit keeps files in Google's storage | **(a)** Use Google's storage; whoever puts it online copies the existing files across. **(b)** Keep their current service, connected with a key |
 | AI from another company (OpenAI, Mistral) | Claude and Gemini are built in with no key | **(a)** Switch to Claude or Gemini. **(b)** Keep theirs, connected with a key |
 | A Vue, Svelte or Angular page | stackkit's page is React | **(a)** Rebuild the screens in React, keeping content, styles and pictures (takes longer). **(b)** Move the content and pictures now, rebuild the screens after |
