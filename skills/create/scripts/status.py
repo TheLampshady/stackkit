@@ -126,8 +126,8 @@ def project_path(dest: Path, rel: str) -> Path:
 # Google's docs for Cloud Run source deploys and App Engine deploys.
 ACCESS_STEPS = [
     (
-        f"grant the server's accounts their roles ({SETUP_IAM})",
-        "api",
+        f"grant the server's and jobs' accounts their roles ({SETUP_IAM})",
+        "shared",
         "resourcemanager.projects.setIamPolicy",
         ["roles/resourcemanager.projectIamAdmin"],
     ),
@@ -145,7 +145,7 @@ ACCESS_STEPS = [
     ),
     (
         "add keys to Secret Manager",
-        "api",
+        "shared",
         "secretmanager.secrets.create",
         ["roles/secretmanager.admin"],
     ),
@@ -159,6 +159,17 @@ ACCESS_STEPS = [
             "roles/iam.serviceAccountUser",
             # Only Cloud Run Admin can make a service public (no team sign-in)
             "roles/run.admin",
+        ],
+    ),
+    (
+        "put background jobs online and on a timer (make deploy-job, make schedule-job)",
+        "jobs",
+        "run.jobs.create",
+        [
+            "roles/run.sourceDeveloper",
+            "roles/serviceusage.serviceUsageConsumer",
+            "roles/iam.serviceAccountUser",
+            "roles/cloudscheduler.admin",
         ],
     ),
     (
@@ -176,6 +187,8 @@ ACCESS_STEPS = [
 # Cloud Run source deploys build as the Compute Engine default account, which
 # needs this role; newer projects don't give it Editor, which used to cover it.
 BUILD_ROLES = {"roles/run.builder", "roles/editor"}
+# Parts deployed by a Cloud Run source build
+BUILDS_ON_CLOUD_RUN = {"cloud_run", "jobs"}
 TEST_PERMISSIONS = (
     "https://cloudresourcemanager.googleapis.com/v1/projects/{project}"
     ":testIamPermissions"
@@ -614,9 +627,9 @@ def access_report(parts: list[str], env: dict[str, str]) -> dict:
             result["checked"] = True
             for step in steps:
                 step["can"] = step["permission"] in held
-        if "cloud_run" in parts:
+        if BUILDS_ON_CLOUD_RUN & set(parts):
             result["build_account"] = build_account(project)
-    if "cloud_run" in parts and "build_account" not in result:
+    if BUILDS_ON_CLOUD_RUN & set(parts) and "build_account" not in result:
         result["build_account"] = {
             "account": None,
             "role": "roles/run.builder",

@@ -38,6 +38,7 @@ architecture-beta
 | App Engine | Service hosting (default target) | `api_service/app.yaml`, routing in `gcp/dispatch.yaml` |
 | Cloud Run | Alternative service target, and a target for the agents | `make deploy-cr` / `make deploy-agent-cr` flags |
 | Agent Engine | ADK agent hosting | `agent_service/deploy.py` |
+| Cloud Run jobs + Cloud Scheduler | Background jobs, by hand or on a timer | `job_service/Makefile` |
 | Firebase Auth | User authentication | Firebase Console |
 | Firestore | Document database | `gcp/firestore.rules`, `gcp/firestore.indexes.json` |
 | Cloud Storage | File storage | `gcp/storage.rules`, CORS in `gcp/cors.json` |
@@ -107,6 +108,7 @@ Each target builds first — you don't need a separate `make build`.
 | `make deploy-cr` | `api_service/` | Cloud Run, from source, `--no-allow-unauthenticated` |
 | `make deploy-agent` | `agent_service/` | Agent Engine, via `agent_service/deploy.py` |
 | `make deploy-agent-cr` | `agent_service/` | Cloud Run, via `adk deploy cloud_run --with_ui` |
+| `make deploy-job JOB=<name>` | `job_service/` | Cloud Run jobs, from source; `make schedule-job` adds the timer |
 
 `make deploy-app` runs frontend build → `frontend/dist/` copied to `api_service/static/` → `requirements.txt` exported from the lockfile → `gcloud app deploy`.
 

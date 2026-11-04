@@ -48,13 +48,14 @@ The SPA is built into `api_service/static/` at deploy time, so in production the
 | `agent_service/agents/` | Google ADK agent definitions |
 | `agent_service/gcp_services/` | Copy of `shared/gcp_services/` |
 | `agent_service/tests/` | pytest test suite for the agents |
+| `job_service/` | Background jobs deploy unit (Cloud Run jobs): `main.py` runs one module from `jobs/` |
 | `frontend/` | React 19 SPA (Vite, Tailwind v4, shadcn/ui) |
 | `gcp/` | Emulator orchestration, Firestore rules/indexes, IAM scripts, `gcp` CLI |
 | `notebooks/` | ML experimentation with Vertex AI |
 
 ### Service Boundaries
 
-`api_service/` and `agent_service/` are separate uv workspace packages that deploy independently — the service to App Engine or Cloud Run, the agents to Agent Engine or Cloud Run. They share GCP integration code by **copy, not import**: `shared/gcp_services/` is the one to edit, and `shared/sync.sh` (`make sync`) copies it into every `*_service/gcp_services/`. The make targets that run, test, build or deploy a service sync first, so a copy is never stale.
+Each `*_service/` folder is a separate uv workspace package that deploys independently: the server to App Engine or Cloud Run, the agents to Agent Engine or Cloud Run, background jobs to Cloud Run jobs. They share GCP integration code by **copy, not import**: `shared/gcp_services/` is the one to edit, and `shared/sync.sh` (`make sync`) copies it into every `*_service/gcp_services/`. The make targets that run, test, build or deploy a service sync first, so a copy is never stale.
 
 The copy exists because each package deploys from its own directory and installs its own dependency set; App Engine, Cloud Run and Agent Engine upload only that directory. The sync copies a shared file only when it's newer than the copy. A copy edited by hand is never overwritten: the sync fails and names the file, so the change can be moved to `shared/gcp_services/`.
 

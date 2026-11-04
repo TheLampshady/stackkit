@@ -42,6 +42,9 @@ make adk-api            # Sync GCP services + start ADK API server (agents)
 make deploy-agent       # Sync + deploy to Agent Engine via deploy.py
 make deploy-agent-cr    # Sync + deploy to Cloud Run via adk deploy
 make sync               # Copy shared/gcp_services/ into each *_service/ (run/test/build/deploy do it first)
+make run-job JOB=example      # Run one background job here (job_service/jobs/example.py)
+make deploy-job JOB=example   # Put a job online as a Cloud Run job (no Docker)
+make schedule-job JOB=example SCHEDULE="0 6 * * *"  # Run a deployed job on a timer
 
 # Cloud Setup (run once per project, or when secrets change)
 bash gcp/bin/setup_iam.sh   # Grant the server's service accounts their roles (reads PROJECT_ID from .env; needs Owner or Project IAM Admin)
@@ -61,6 +64,7 @@ bash gcp/bin/setup_iam.sh   # Grant the server's service accounts their roles (r
 - `agent_service/agents/` - Google ADK agent definitions (each folder: `agent.py` + `prompt.py`)
 - `agent_service/gcp_services/` - Copy of shared/gcp_services/; never edit it directly
 - `agent_service/deploy.py` - Agent Engine deployment via vertexai.agent_engines
+- `job_service/` - Background jobs on Cloud Run jobs: one module per job in `jobs/`, each with a `main()`, run by `main.py`
 - `gcp/` - Firebase emulator orchestration and deployment tooling
 - `notebooks/` - ML experimentation with Vertex AI
 

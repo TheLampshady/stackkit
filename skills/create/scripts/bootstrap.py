@@ -147,8 +147,9 @@ def resolve_removals(manifest: dict, requested: list[str]) -> list[str]:
     """Work out the full set of modules to remove and check it's buildable.
 
     An ``implicit`` module is removed on its own once no kept module
-    ``requires`` it. Every kept module's ``requires`` must be kept, and each
-    ``keep_one_of`` group must keep at least one module.
+    ``requires`` it. Every kept module's ``requires`` must be kept, at least
+    one of its ``requires_any``, and each ``keep_one_of`` group must keep at
+    least one module.
 
     :param manifest: The template manifest
     :param requested: Modules asked to be removed
@@ -175,7 +176,16 @@ def resolve_removals(manifest: dict, requested: list[str]) -> list[str]:
         missing = sorted(set(modules[name].get("requires", [])) & removed)
         if missing:
             raise BootstrapError(f"{name} needs {', '.join(missing)}, which is removed")
+        if (any_of := modules[name].get("requires_any")) and not kept & set(any_of):
+            raise BootstrapError(
+                f"{name} needs one of {', '.join(any_of)}, and all are removed"
+            )
     for group in manifest.get("rules", {}).get("keep_one_of", []):
+        # A group is a list, or a table that applies only when_kept has a kept module
+        if isinstance(group, dict):
+            if not kept & set(group.get("when_kept", group["modules"])):
+                continue
+            group = group["modules"]
         if not kept & set(group):
             raise BootstrapError(f"Keep at least one of {', '.join(group)}")
     return [m for m in modules if m in removed]

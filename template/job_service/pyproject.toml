@@ -1,0 +1,61 @@
+[project]
+name = "job-service"
+version = "0.1.0"
+description = "stackkit-app background jobs (Cloud Run jobs)"
+requires-python = "==3.13.*"
+dependencies = [
+    # stackkit:begin firebase
+    "firebase-admin>=7.7.0",
+    # stackkit:end firebase
+    "google-cloud-logging>=3.17.0",
+    "google-cloud-secret-manager>=2.31.0",
+    # stackkit:begin storage
+    "google-cloud-storage>=3.17.1",
+    # stackkit:end storage
+    # stackkit:begin ai
+    "google-genai>=2.31.0",
+    "anthropic[vertex]>=1.15.0",
+    # stackkit:end ai
+    "pydantic-settings>=2.16.0",
+    "python-dotenv>=1.2.4",
+]
+
+[dependency-groups]
+test = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-socket>=0.8.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+python_files = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-socket",
+    "--allow-hosts=127.0.0.1,localhost",
+]
+
+[tool.ty.environment]
+python-version = "3.13"
+root = ["."]
+
+[[tool.ty.overrides]]
+include = ["tests/*.py"]
+[tool.ty.overrides.rules]
+invalid-argument-type = "ignore"
+
+# The shared clients include the web server's sign-in helpers, which jobs
+# never import
+[[tool.ty.overrides]]
+include = ["gcp_services/**/*.py"]
+[tool.ty.overrides.rules]
+unresolved-import = "ignore"
+unresolved-attribute = "ignore"
+invalid-argument-type = "ignore"

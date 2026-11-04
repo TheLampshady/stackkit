@@ -50,6 +50,15 @@ TEST_TARGETS += test-agents
 CHECK_TARGETS += check-agents
 # stackkit:end agents
 
+# stackkit:begin jobs
+JOBS_DIR=job_service
+# With no server or page, make run runs the example job
+RUN_TARGET ?= run-job
+TYPECHECK_TARGETS += typecheck-jobs
+TEST_TARGETS += test-jobs
+CHECK_TARGETS += check-jobs
+# stackkit:end jobs
+
 # stackkit:begin shared
 # Every service deploys from its own folder with a copy of shared/gcp_services/.
 # The targets that run, test, build or deploy a service refresh the copies first.
@@ -205,3 +214,31 @@ test-agents: sync
 
 check-agents: typecheck-agents test-agents
 # stackkit:end agents
+
+# stackkit:begin jobs
+# ------ JOBS ------
+# Background work that runs, finishes and exits: make run-job JOB=example
+.PHONY: run-job deploy-job start-job schedule-job job-runs typecheck-jobs test-jobs check-jobs
+run-job:
+	$(MAKE) -C $(JOBS_DIR) run
+
+deploy-job:
+	$(MAKE) -C $(JOBS_DIR) deploy
+
+start-job:
+	$(MAKE) -C $(JOBS_DIR) start
+
+schedule-job:
+	$(MAKE) -C $(JOBS_DIR) schedule
+
+job-runs:
+	$(MAKE) -C $(JOBS_DIR) runs
+
+typecheck-jobs: sync
+	cd ${JOBS_DIR} && uv run --all-groups ty check .
+
+test-jobs: sync
+	cd ${JOBS_DIR} && uv run --all-groups pytest tests
+
+check-jobs: typecheck-jobs test-jobs
+# stackkit:end jobs

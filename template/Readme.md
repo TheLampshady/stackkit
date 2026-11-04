@@ -78,6 +78,16 @@ Daily development commands. All commands use `make` targets defined in the root 
 | `make deploy-agent` | Deploy to Agent Engine via `agent_service/deploy.py` |
 | `make deploy-agent-cr` | Deploy the agents to Cloud Run via `adk deploy` |
 
+**Jobs** — background work in `job_service/jobs/` that runs, finishes and exits (see `job_service/Readme.md`):
+
+| Command | Description |
+|---------|-------------|
+| `make run-job JOB=<name>` | Run a job on this computer |
+| `make deploy-job JOB=<name>` | Put a job online as a Cloud Run job, built from source |
+| `make start-job JOB=<name>` | Run the online job once, now |
+| `make schedule-job JOB=<name>` | Run the online job on a timer (`SCHEDULE`, `TIME_ZONE`) |
+| `make job-runs JOB=<name>` | List the job's recent runs |
+
 Every `-be` / `-fe` variant of the quality targets can be run on its own (`make lint-fe`, `make test-be`, …). Infrastructure targets — Firestore rules, indexes, bucket CORS, IAM, the `gcp` CLI — live in `gcp/Makefile`; see the [Cloud Guide](./docs/CLOUD.md).
 
 ---
@@ -113,6 +123,7 @@ The repo is a uv workspace: `api_service/`, `agent_service/`, `gcp/` and `notebo
 | `shared/gcp_services/` | **Shared code** for GCP/Firebase integrations: edit it here; every `*_service/` keeps a copy, refreshed by `make sync` |
 | `agent_service/` | **Agents deploy unit** — self-contained ADK agents with their own settings and GCP services |
 | `agent_service/agents/` | Google ADK agent definitions (each agent has `agent.py` + `prompt.py`) |
+| `job_service/` | **Background jobs** — Cloud Run jobs, one module per job in `jobs/`, with their own settings and GCP services |
 | `gcp/` | **Infrastructure** — Firebase emulator configs, Firestore rules/indexes, IAM scripts, and the `gcp` CLI |
 | `frontend/` | **Frontend** — React SPA (Vite + Tailwind v4 + shadcn/ui), built to `api_service/static/` during deploy |
 | `notebooks/` | **Experimentation** — Jupyter notebooks for Gemini, ADK and Vertex AI prototyping (`make -C notebooks lab`). `custom_model/` has its own `pyproject.toml` for the Vertex prediction image, compiled with `make -C notebooks requirements` |

@@ -17,12 +17,18 @@
 # fallback it replaces); they're deleted when the module is kept.
 #
 # `requires` lists modules a kept module can't work without; the bootstrap
-# refuses to remove them. An `implicit` module is never asked about: it's
+# refuses to remove them. `requires_any` lists modules a kept module needs at
+# least one of (the database needs a server or jobs to use it). An `implicit` module is never asked about: it's
 # removed on its own once no kept module requires it.
 
 [rules]
-# Each group must keep at least one module.
-keep_one_of = [["api", "frontend"], ["gae", "cloud_run"]]
+# Each group must keep at least one module. A table's group applies only when
+# a `when_kept` module is kept: hosting is for a server or a web page, and a
+# project with only jobs has neither.
+keep_one_of = [
+    ["api", "frontend", "jobs"],
+    { modules = ["gae", "cloud_run"], when_kept = ["api", "frontend"] },
+]
 
 [values]
 # Placeholder strings in the template, replaced with the new project's values.
@@ -43,7 +49,6 @@ paths = [
     "frontend/src/lib/api.ts",
     "frontend/src/lib/api.test.ts",
     "frontend/src/lib/types.ts",
-    "gcp/bin/setup_iam.sh",
 ]
 workspace_member = "api_service"
 # The static site's own deploy; an API project serves the frontend itself
@@ -57,8 +62,6 @@ refs = [
     "typecheck-be",
     "@/lib/api",
     "/api/",
-    "setup-iam",
-    "setup_iam",
 ]
 
 [modules.frontend]
@@ -76,6 +79,16 @@ paths = ["agent_service"]
 workspace_member = "agent_service"
 refs = ["agent_service", "adk-web", "adk-api", "deploy-agent"]
 
+[modules.jobs]
+summary = "Background work that runs, finishes and exits, by hand or on a timer (Cloud Run jobs). No Docker."
+requires = ["shared", "gcp"]
+# Deploys on its own with its own copy of the shared clients, so other
+# modules' refs aren't checked inside it.
+self_contained = true
+paths = ["job_service"]
+workspace_member = "job_service"
+refs = ["job_service", "run-job", "deploy-job", "start-job", "schedule-job", "job-runs"]
+
 [modules.notebooks]
 summary = "Jupyter notebooks for AI/ML experiments."
 requires = ["ai"]
@@ -91,7 +104,8 @@ refs = ["http_tests"]
 
 [modules.database]
 summary = "Saves records between visits (Firestore)."
-requires = ["api", "firebase"]
+requires = ["firebase"]
+requires_any = ["api", "jobs"]
 paths = [
     "gcp/firestore.rules",
     "gcp/firestore.indexes.json",
@@ -114,7 +128,8 @@ refs = [
 
 [modules.storage]
 summary = "Keeps uploaded files such as photos and PDFs (Cloud Storage)."
-requires = ["api", "firebase"]
+requires = ["firebase"]
+requires_any = ["api", "jobs"]
 paths = [
     "shared/gcp_services/clients/gcp_storage.py",
     "gcp/storage.rules",
@@ -164,8 +179,8 @@ json_keys = { "gcp/firebase.json" = ["emulators.auth"] }
 refs = ["fb_auth", "firebase_auth_required", "auth_client", "test_auth.py"]
 
 [modules.ai]
-summary = "One-off AI calls from the API (Gemini or Claude on Vertex AI)."
-requires = ["api"]
+summary = "One-off AI calls from the server or jobs (Gemini or Claude on Vertex AI)."
+requires_any = ["api", "jobs"]
 paths = ["shared/gcp_services/clients/gcp_vertex.py"]
 refs = ["gcp_vertex", "default_text_model", "DEFAULT_TEXT_MODEL"]
 
@@ -198,6 +213,8 @@ refs = [
 [modules.gae]
 summary = "Deploys to App Engine: free custom domains, no streaming responses."
 requires = ["gcp"]
+# Hosts the server or the web page; a project with only jobs has neither
+requires_any = ["api", "frontend"]
 paths = [
     "api_service/app.yaml",
     "gcp/dispatch.yaml",
@@ -231,8 +248,9 @@ summary = "The Google clients each server folder keeps a copy of, and the sync t
 implicit = true
 # Paths under shared/ name every service's copy too: removing
 # shared/gcp_services/x.py also removes api_service/gcp_services/x.py.
-paths = ["shared"]
-refs = ["shared/", "sync.sh"]
+# setup_iam.sh grants every backend's accounts their roles
+paths = ["shared", "gcp/bin/setup_iam.sh"]
+refs = ["shared/", "sync.sh", "setup-iam", "setup_iam"]
 
 [modules.gcp]
 summary = "The gcp/ tooling folder: emulator, provisioning, service account roles (setup-iam) and App Engine helpers."
