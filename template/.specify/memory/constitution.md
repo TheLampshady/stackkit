@@ -714,7 +714,7 @@ async def admin_only(request: Request) -> dict:
 All Google ADK agents MUST follow the standard directory structure and export `root_agent`.
 
 ```
-service/agents/
+api_service/agents/
 └── my_agent/
     ├── __init__.py    # Exports root_agent
     ├── agent.py       # Agent definition
@@ -899,10 +899,10 @@ domains in `gcp/cors.json` and re-apply.
 
 | File                        | Role                                              |
 |-----------------------------|---------------------------------------------------|
-| `service/app.py`            | FastAPI app definition + local uvicorn entry       |
-| `service/app.yaml`          | App Engine config: entrypoint, handlers, scaling   |
-| `service/api/config_app.py` | CORS middleware + static file / SPA routing setup  |
-| `service/api/router.py`     | API route definitions (prefix: `/api`)             |
+| `api_service/app.py`            | FastAPI app definition + local uvicorn entry       |
+| `api_service/app.yaml`          | App Engine config: entrypoint, handlers, scaling   |
+| `api_service/api/config_app.py` | CORS middleware + static file / SPA routing setup  |
+| `api_service/api/router.py`     | API route definitions (prefix: `/api`)             |
 | `gcp/bin/setup_iam.sh`      | Grants IAM roles to the server's service accounts  |
 | `gcp/cors.json`             | GCS bucket CORS policy (apply via `gcloud`)        |
 

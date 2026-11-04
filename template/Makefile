@@ -19,7 +19,7 @@ APP_DEPLOY := -C frontend deploy
 # stackkit:end gae
 
 # stackkit:begin api
-SERVICE_DIR=service
+SERVICE_DIR=api_service
 TYPECHECK_TARGETS += typecheck-be
 TEST_TARGETS += test-be
 CHECK_TARGETS += typecheck-be test-be

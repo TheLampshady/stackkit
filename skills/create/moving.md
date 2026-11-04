@@ -31,12 +31,12 @@ The template's targets and tooling stay as they are: adapt the moved code to Vit
 | Pages or screens | `frontend/src/pages/<Name>Page.tsx`, each with a route in `frontend/src/App.tsx` |
 | Static files (images, fonts, `favicon`, `robots.txt`) | `frontend/public/` |
 | Global CSS | `frontend/src/index.css` |
-| Server endpoints, in any language | FastAPI routes in `service/api/`, included in `api_router` (prefix `/api`, so URLs the page calls stay the same) |
-| Python server code (Flask, Django, FastAPI) | `service/`, mostly as it is, its routes on `api_router` |
+| Server endpoints, in any language | FastAPI routes in `api_service/api/`, included in `api_router` (prefix `/api`, so URLs the page calls stay the same) |
+| Python server code (Flask, Django, FastAPI) | `api_service/`, mostly as it is, its routes on `api_router` |
 | Database access and models | Pydantic models and the Firestore client from `gcp_services` (`AGENTS.md`, "Firebase Client Access") |
 | Sign-in | The sign-in chosen in the interview (`auth_iap` or `auth_firebase`) |
-| AI calls | `service/gcp_services/clients/gcp_vertex.py`, or an agent in `agent_service/agents/` |
-| Background jobs and scripts | `service/` (Python) or `frontend/scripts/` (TypeScript), each with a make target |
+| AI calls | `api_service/gcp_services/clients/gcp_vertex.py`, or an agent in `agent_service/agents/` |
+| Background jobs and scripts | `api_service/` (Python) or `frontend/scripts/` (TypeScript), each with a make target |
 
 Never keep the old layout beside the new one: no `legacy/`, `old/`, `src/`, `app/` or `public/` at the root.
 
@@ -52,7 +52,7 @@ The React code moves almost as it is. What changes is everything Next does aroun
 | `loading.tsx`, `error.tsx`, `not-found.tsx` | `isPending` and `error` from `useQuery`; the route's `errorElement`; a `*` route |
 | `"use client"` | Delete the line. Everything runs in the browser |
 | Server components or `getServerSideProps` / `getStaticProps` fetching data | Move the fetching into a FastAPI route; the page calls it with `useQuery` through `frontend/src/lib/api.ts`. Data that never changes can be imported directly |
-| `app/api/**/route.ts`, `pages/api/**` | FastAPI routes in `service/api/` at the same paths under `/api`, rewritten in Python. Request and response bodies become Pydantic models |
+| `app/api/**/route.ts`, `pages/api/**` | FastAPI routes in `api_service/api/` at the same paths under `/api`, rewritten in Python. Request and response bodies become Pydantic models |
 | Server actions (`"use server"`) | A POST route in FastAPI, called with `useMutation` |
 | `next/link` | `Link` from `react-router-dom`, `href` → `to` |
 | `next/navigation`, `next/router` | `useNavigate`, `useParams`, `useSearchParams`, `useLocation` |

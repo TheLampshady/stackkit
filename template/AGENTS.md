@@ -23,7 +23,7 @@ make check              # Both: lint, format, typecheck, test
 make hooks              # Run pre-commit on all files
 
 # Single test
-uv run pytest service/tests/test_api.py::test_name -v          # Backend
+uv run pytest api_service/tests/test_api.py::test_name -v          # Backend
 cd frontend && bun run vitest run src/lib/api.test.ts           # Frontend
 
 # Skip slow/integration tests
@@ -31,7 +31,7 @@ uv run pytest -m "not slow"
 uv run pytest -m "not integration"
 
 # Build & Deploy
-make build              # Build frontend + copy dist/ to service/static/
+make build              # Build frontend + copy dist/ to api_service/static/
 make build-fe           # Build frontend only (frontend/dist/)
 make build-be           # Export requirements.txt
 make deploy-app         # Build + deploy to App Engine
@@ -54,17 +54,17 @@ bash gcp/bin/setup_iam.sh   # Grant the server's service accounts their roles (r
 
 ### Directory Structure
 - `frontend/` - React SPA (Vite + Tailwind v4 + shadcn/ui)
-- `service/` - FastAPI backend (entry: `app.py`)
-- `service/gcp_services/` - GCP service modules (source of truth, synced to agent_service/)
-- `service/gcp_services/clients/` - Pre-configured Firebase clients (`db`, `auth_client`, `bucket`)
+- `api_service/` - FastAPI backend (entry: `app.py`)
+- `api_service/gcp_services/` - GCP service modules (source of truth, synced to agent_service/)
+- `api_service/gcp_services/clients/` - Pre-configured Firebase clients (`db`, `auth_client`, `bucket`)
 - `agent_service/` - ADK agents deploy unit (self-contained with own settings + GCP services)
 - `agent_service/agents/` - Google ADK agent definitions (each folder: `agent.py` + `prompt.py`)
-- `agent_service/gcp_services/` - Synced subset of service/gcp_services/ (Firestore only, no auth/storage)
+- `agent_service/gcp_services/` - Synced subset of api_service/gcp_services/ (Firestore only, no auth/storage)
 - `agent_service/deploy.py` - Agent Engine deployment via vertexai.agent_engines
 - `gcp/` - Firebase emulator orchestration and deployment tooling
 - `notebooks/` - ML experimentation with Vertex AI
 
-### Dual-Mode Configuration (`service/app_settings.py`)
+### Dual-Mode Configuration (`api_service/app_settings.py`)
 - **Local**: Uses emulators when `USE_EMULATOR=true` in `.env`
 - **Cloud**: Auto-detects GCP (via `K_SERVICE`, `GAE_INSTANCE` env vars), loads secrets from Secret Manager
 - Settings cascade: `.env` -> environment variables -> GCP defaults
@@ -78,10 +78,10 @@ from gcp_services.clients.gcp_services import db, bucket, auth_client
 Clients auto-detect emulator mode via `settings.use_emulator`.
 
 ### Route Structure
-All API routes go through `service/api/router.py` via `api_router` (prefix: `/api`). App entry point is `service/app.py`.
+All API routes go through `api_service/api/router.py` via `api_router` (prefix: `/api`). App entry point is `api_service/app.py`.
 
 ### Authentication
-Two options in `service/gcp_services/clients/`, both attach the caller to `request.state.user`
+Two options in `api_service/gcp_services/clients/`, both attach the caller to `request.state.user`
 and check the email against `settings.valid_domains` (`VALID_DOMAINS` env: domains or full addresses,
 comma separated, default blank; blank disables the check and allows any account):
 
@@ -125,7 +125,7 @@ def test_with_network(): ...
 def test_with_specific_hosts(): ...
 ```
 
-Note: `pythonpath` is set to `service/` in pyproject.toml, so test imports use `from api.xxx` not `from service.api.xxx`.
+Note: `pythonpath` is set to `api_service/` in pyproject.toml, so test imports use `from api.xxx` not `from service.api.xxx`.
 
 ### Pre-commit Hooks
 Config at `.config/.pre-commit-config.yaml` (not default location).
@@ -138,7 +138,7 @@ Config at `.config/.pre-commit-config.yaml` (not default location).
 
 Shared run configs live in `.run/` and appear in PyCharm / IntelliJ automatically:
 
-- **Service** — FastAPI app (`service/app.py`, working dir `service/`)
+- **Service** — FastAPI app (`api_service/app.py`, working dir `api_service/`)
 - **FB Emulator** — `gcp/bin/emulator.sh` in a terminal
 - **sync-db** — `make -C gcp sync-db`
 <!-- stackkit:begin frontend -->

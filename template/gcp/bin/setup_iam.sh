@@ -78,7 +78,7 @@ echo "Accounts: ${RUNTIME_ACCOUNTS[*]}"
 echo ""
 
 # --- Secret Manager access ---
-# Same names as SECRET_KEY_NAMES in service/app_settings.py
+# Same names as SECRET_KEY_NAMES in api_service/app_settings.py
 SECRETS=()
 
 if [[ ${#SECRETS[@]} -eq 0 ]]; then

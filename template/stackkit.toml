@@ -38,18 +38,18 @@ summary = "The backend (FastAPI). Without it the project is a static site."
 # gcp/bin/setup_iam.sh grants the server's accounts their roles
 requires = ["gcp"]
 paths = [
-    "service",
+    "api_service",
     ".run/Service.run.xml",
     "frontend/src/lib/api.ts",
     "frontend/src/lib/api.test.ts",
     "frontend/src/lib/types.ts",
     "gcp/bin/setup_iam.sh",
 ]
-workspace_member = "service"
+workspace_member = "api_service"
 # The static site's own deploy; an API project serves the frontend itself
 only_without = ["frontend/app.yaml", "frontend/.gcloudignore", "frontend/Makefile"]
 refs = [
-    "service/",
+    "api_service/",
     "SERVICE_DIR",
     "run-be",
     "build-be",
@@ -116,7 +116,7 @@ refs = [
 summary = "Keeps uploaded files such as photos and PDFs (Cloud Storage)."
 requires = ["api", "firebase"]
 paths = [
-    "service/gcp_services/clients/gcp_storage.py",
+    "api_service/gcp_services/clients/gcp_storage.py",
     "gcp/storage.rules",
     "gcp/cors.json",
 ]
@@ -136,8 +136,8 @@ refs = [
 [modules.auth_iap]
 summary = "Team-only access: Google's Identity-Aware Proxy in front of the whole app."
 paths = [
-    "service/gcp_services/clients/iap_auth.py",
-    "service/tests/test_iap_auth.py",
+    "api_service/gcp_services/clients/iap_auth.py",
+    "api_service/tests/test_iap_auth.py",
     "gcp/bin/setup_iap.sh",
 ]
 refs = [
@@ -157,7 +157,7 @@ refs = [
 summary = "Accounts people sign up for (Firebase Auth). The server side only; login screens are built on top."
 requires = ["api", "firebase"]
 paths = [
-    "service/gcp_services/clients/fb_auth.py",
+    "api_service/gcp_services/clients/fb_auth.py",
     "gcp/bin/test_auth.py",
 ]
 json_keys = { "gcp/firebase.json" = ["emulators.auth"] }
@@ -166,7 +166,7 @@ refs = ["fb_auth", "firebase_auth_required", "auth_client", "test_auth.py"]
 [modules.ai]
 summary = "One-off AI calls from the API (Gemini or Claude on Vertex AI)."
 requires = ["api"]
-paths = ["service/gcp_services/clients/gcp_vertex.py"]
+paths = ["api_service/gcp_services/clients/gcp_vertex.py"]
 refs = ["gcp_vertex", "default_text_model", "DEFAULT_TEXT_MODEL"]
 
 [modules.firebase]
@@ -174,8 +174,8 @@ summary = "The Firebase app and its local emulator, shared by database, storage 
 implicit = true
 requires = ["gcp"]
 paths = [
-    "service/gcp_services/clients/gcp_services.py",
-    "service/gcp_services/clients/fb_config.py",
+    "api_service/gcp_services/clients/gcp_services.py",
+    "api_service/gcp_services/clients/fb_config.py",
     "gcp/firebase.json",
     "gcp/.firebaserc",
     "gcp/.gitignore",
@@ -199,7 +199,7 @@ refs = [
 summary = "Deploys to App Engine: free custom domains, no streaming responses."
 requires = ["gcp"]
 paths = [
-    "service/app.yaml",
+    "api_service/app.yaml",
     "gcp/dispatch.yaml",
     "gcp/commands/split_cookie.py",
     "frontend/app.yaml",
@@ -218,7 +218,7 @@ refs = [
 [modules.cloud_run]
 summary = "Deploys to Cloud Run: scales to zero and streams, custom domains need a load balancer."
 requires = ["api"]
-paths = ["service/Procfile"]
+paths = ["api_service/Procfile"]
 refs = ["deploy-cr", "Procfile", "run.app", "gcloud run"]
 
 [modules.always_on]

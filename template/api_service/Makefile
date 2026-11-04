@@ -7,7 +7,7 @@ REGION ?= us-central1
 
 .PHONY: build
 build:
-	uv export --frozen --package service --no-dev --no-hashes --format requirements-txt > requirements.txt
+	uv export --frozen --package api-service --no-dev --no-hashes --format requirements-txt > requirements.txt
 
 # ------ RUN ------
 
@@ -32,7 +32,7 @@ ACCESS_FLAGS := --no-allow-unauthenticated --iap
 # MAX_INSTANCES caps how many run at once, so a traffic spike can't run up the
 # bill (Cloud Run's own default is 100).
 # stackkit:begin gae
-# Keep it in step with max_instances in service/app.yaml.
+# Keep it in step with max_instances in api_service/app.yaml.
 # stackkit:end gae
 MIN_INSTANCES := 0
 # stackkit:begin always_on

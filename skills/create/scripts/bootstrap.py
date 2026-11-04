@@ -195,7 +195,7 @@ def kept_folders(template: Path, manifest: dict, removed: list[str]) -> set[str]
     :param template: Template root
     :param manifest: The template manifest
     :param removed: Modules being removed
-    :return: Folder names, such as ``frontend`` and ``service``
+    :return: Folder names, such as ``frontend`` and ``api_service``
     """
     gone = {
         p
@@ -765,6 +765,33 @@ def add_env_keys(dest: Path, sample: Path, env: dict[str, str]) -> list[str]:
     return added
 
 
+def use_old_names(tree: Path, legacy: dict[str, str]) -> None:
+    """Rewrite a rendered template into a project's pre-rename layout.
+
+    Projects made before the template renamed a folder keep its old name.
+    Renaming the folder and its mentions in the rendered copies lets the
+    three-way merge compare like with like.
+
+    :param tree: A rendered template
+    :param legacy: New folder name to old, from ``status.legacy_dirs``
+    :side effects: Moves folders and rewrites text files in ``tree``
+    """
+    for new, old in legacy.items():
+        if (tree / new).is_dir():
+            (tree / new).rename(tree / old)
+        package = new.replace("_", "-")
+        for path in tree.rglob("*"):
+            if not path.is_file():
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            fixed = text.replace(new, old).replace(package, old)
+            if fixed != text:
+                path.write_text(fixed, encoding="utf-8")
+
+
 def add_modules(args: argparse.Namespace) -> dict:
     """Add modules to an existing stackkit project.
 
@@ -803,9 +830,12 @@ def add_modules(args: argparse.Namespace) -> dict:
         )
     values = project_values(dest, manifest, args.name, args.display_name)
     env = parse_env(args.env, manifest["env"]["keys"])
-    copies = parse_copies(
-        args.copy, dest, kept_folders(args.template, manifest, remove_after), False
-    )
+    # A project made before a folder rename keeps the old name; copies go there
+    legacy = status.legacy_dirs(dest)
+    folders = {
+        legacy.get(f, f) for f in kept_folders(args.template, manifest, remove_after)
+    }
+    copies = parse_copies(args.copy, dest, folders, False)
 
     summary = {
         "dest": str(dest.resolve()),
@@ -821,6 +851,9 @@ def add_modules(args: argparse.Namespace) -> dict:
         base, after = Path(tmp) / "base", Path(tmp) / "after"
         render(args.template, base, manifest, remove_before, values)
         render(args.template, after, manifest, remove_after, values)
+        if legacy:
+            use_old_names(base, legacy)
+            use_old_names(after, legacy)
         before_files = {p.relative_to(base) for p in base.rglob("*") if p.is_file()}
         after_files = {p.relative_to(after) for p in after.rglob("*") if p.is_file()}
 

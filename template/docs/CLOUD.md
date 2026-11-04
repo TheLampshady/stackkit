@@ -35,7 +35,7 @@ architecture-beta
 
 | Service | Purpose | Config Location |
 |---------|---------|-----------------|
-| App Engine | Service hosting (default target) | `service/app.yaml`, routing in `gcp/dispatch.yaml` |
+| App Engine | Service hosting (default target) | `api_service/app.yaml`, routing in `gcp/dispatch.yaml` |
 | Cloud Run | Alternative service target, and a target for the agents | `make deploy-cr` / `make deploy-agent-cr` flags |
 | Agent Engine | ADK agent hosting | `agent_service/deploy.py` |
 | Firebase Auth | User authentication | Firebase Console |
@@ -103,12 +103,12 @@ Each target builds first — you don't need a separate `make build`.
 
 | Target | Deploys | To |
 |--------|---------|-----|
-| `make deploy-app` | `service/` | App Engine (`gcloud app deploy service/app.yaml`) |
-| `make deploy-cr` | `service/` | Cloud Run, from source, `--no-allow-unauthenticated` |
+| `make deploy-app` | `api_service/` | App Engine (`gcloud app deploy api_service/app.yaml`) |
+| `make deploy-cr` | `api_service/` | Cloud Run, from source, `--no-allow-unauthenticated` |
 | `make deploy-agent` | `agent_service/` | Agent Engine, via `agent_service/deploy.py` |
 | `make deploy-agent-cr` | `agent_service/` | Cloud Run, via `adk deploy cloud_run --with_ui` |
 
-`make deploy-app` runs frontend build → `frontend/dist/` copied to `service/static/` → `requirements.txt` exported from the lockfile → `gcloud app deploy`.
+`make deploy-app` runs frontend build → `frontend/dist/` copied to `api_service/static/` → `requirements.txt` exported from the lockfile → `gcloud app deploy`.
 
 **New versions do not take traffic automatically.** The App Engine target passes `--no-promote` and names the version from `VERSION` (default `main`), so a deploy is a staged version you promote deliberately.
 
@@ -121,7 +121,7 @@ gcloud app versions migrate VERSION_ID  # send traffic to it
 ### Manual Deployment
 
 ```bash
-cd service
+cd api_service
 make build              # export requirements.txt
 gcloud app deploy app.yaml --project=$PROJECT_ID
 ```
@@ -204,7 +204,7 @@ The script reads `PROJECT_ID` from the root `.env` and grants:
 Agents deploy on their own, so the script also grants the accounts they run as: `roles/datastore.user` and `roles/aiplatform.user` to the Compute Engine default account (`make deploy-agent-cr`), and `roles/datastore.user` to the Agent Engine service agent, `service-<project-number>@gcp-sa-aiplatform-re.iam.gserviceaccount.com` (`make deploy-agent`), whose own role already covers Vertex AI. Google creates that service agent on the first Agent Engine deploy, so rerun the script after it.
 <!-- stackkit:end agents -->
 
-Adding a secret means editing both `SECRET_KEY_NAMES` in `service/app_settings.py` and the `SECRETS` array in `gcp/bin/setup_iam.sh`, then re-running the script before deploying.
+Adding a secret means editing both `SECRET_KEY_NAMES` in `api_service/app_settings.py` and the `SECRETS` array in `gcp/bin/setup_iam.sh`, then re-running the script before deploying.
 
 ### Storage Bucket CORS
 

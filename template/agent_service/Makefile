@@ -1,7 +1,7 @@
 -include ../.env
 export
 
-SERVICE_DIR=../service
+SERVICE_DIR=../api_service
 GCP_SERVICES_SRC=$(SERVICE_DIR)/gcp_services
 GCP_SERVICES_DST=gcp_services
 
