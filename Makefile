@@ -17,6 +17,10 @@ help: ## Show available targets
 # imports also moves the stackkit markers above them.
 RUFF := uvx -q ruff@0.17.1
 
+# The last stackkit before the server moved to api_service/ and shared/ was
+# added. test-bootstrap builds a project with it, then adds to it with this one.
+OLD_STACKKIT := a61a4a6
+
 .PHONY: lint
 lint: ## Check the scripts and template are ruff-clean as they stand
 	$(RUFF) check skills template dev
@@ -46,6 +50,9 @@ test-bootstrap: lint check-versions ## Lint, bootstrap sample projects (convert 
 			$$dest-boot.json $$dest.json; echo "   ✓ status sees the kept parts"; \
 		if [ -f $$dest/gcp/bin/setup_iam.sh ]; then bash -n $$dest/gcp/bin/setup_iam.sh \
 			&& echo "   ✓ setup_iam.sh parses" || exit 1; fi; \
+		for copy in $$dest/*_service/gcp_services; do [ -d $$copy ] || continue; \
+			diff -rq -x __pycache__ $$dest/shared/gcp_services $$copy \
+				|| { echo "   $$copy differs from shared/gcp_services"; exit 1; }; done; \
 	done; \
 	echo "── convert (an existing repo turned into a static site in place)"; \
 	old=$(SAMPLES)/convert; mkdir -p $$old/images $$old/src; \
@@ -76,21 +83,21 @@ test-bootstrap: lint check-versions ## Lint, bootstrap sample projects (convert 
 	diff -rq $$grow $$fresh -x .env -x uv.lock || { echo "   adding differs from a fresh project"; exit 1; }; \
 	uv run --python 3.13 --no-project skills/create/scripts/check.py --dest $$grow > $$grow.json \
 		|| { cat $$grow.json; exit 1; }; echo "   ✓ same as a fresh project, make check, make build"; \
-	echo "── add to an older project (its server is still in service/, from before the rename)"; \
-	legacy=$(SAMPLES)/legacy; \
-	uv run --python 3.13 --no-project skills/create/scripts/bootstrap.py --dest $$legacy \
+	echo "── add to an older project (made by stackkit $(OLD_STACKKIT): service/, no shared/)"; \
+	legacy=$(SAMPLES)/legacy; old=$(SAMPLES)/stackkit-$(OLD_STACKKIT); mkdir -p $$old; \
+	git archive $(OLD_STACKKIT) skills template | tar -x -C $$old; \
+	uv run --python 3.13 --no-project $$old/skills/create/scripts/bootstrap.py --dest $$legacy \
 		--name sample-legacy --display-name "Sample legacy" --env NAMESPACE=sample-legacy \
 		--remove frontend,agents,notebooks,http_tests,auth_iap,auth_firebase,database,storage,ai,gae,always_on \
 		> $$legacy-boot.json || { cat $$legacy-boot.json; exit 1; }; \
-	mv $$legacy/api_service $$legacy/service; \
-	grep -rlIZ -e api_service -e api-service $$legacy | xargs -0 perl -pi -e 's/api_service|api-service/service/g'; \
 	uv run --python 3.13 --no-project skills/create/scripts/bootstrap.py --dest $$legacy \
 		--add database > $$legacy-add.json || { cat $$legacy-add.json; exit 1; }; \
-	test ! -e $$legacy/api_service && test -f $$legacy/service/app.py \
+	test ! -e $$legacy/api_service && test ! -e $$legacy/shared && test -f $$legacy/service/app.py \
 		&& grep -q firestore_db $$legacy/service/app_settings.py \
-		|| { echo "   adding to an older project used the new folder name"; cat $$legacy-add.json; exit 1; }; \
+		&& grep -q '"conflicts": \[\]' $$legacy-add.json \
+		|| { echo "   adding to an older project changed its layout or conflicted"; cat $$legacy-add.json; exit 1; }; \
 	uv run --python 3.13 --no-project skills/create/scripts/check.py --dest $$legacy > $$legacy.json \
-		|| { cat $$legacy.json; exit 1; }; echo "   ✓ kept service/, make check, make build"; \
+		|| { cat $$legacy.json; exit 1; }; echo "   ✓ kept its layout, no conflicts, make check, make build"; \
 	rm -rf $(SAMPLES)
 
 .PHONY: claude

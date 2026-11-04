@@ -35,7 +35,7 @@ The template's targets and tooling stay as they are: adapt the moved code to Vit
 | Python server code (Flask, Django, FastAPI) | `api_service/`, mostly as it is, its routes on `api_router` |
 | Database access and models | Pydantic models and the Firestore client from `gcp_services` (`AGENTS.md`, "Firebase Client Access") |
 | Sign-in | The sign-in chosen in the interview (`auth_iap` or `auth_firebase`) |
-| AI calls | `api_service/gcp_services/clients/gcp_vertex.py`, or an agent in `agent_service/agents/` |
+| AI calls | `shared/gcp_services/clients/gcp_vertex.py`, or an agent in `agent_service/agents/` |
 | Background jobs and scripts | `api_service/` (Python) or `frontend/scripts/` (TypeScript), each with a make target |
 
 Never keep the old layout beside the new one: no `legacy/`, `old/`, `src/`, `app/` or `public/` at the root.

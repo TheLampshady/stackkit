@@ -67,6 +67,8 @@ SKIP_FILES = {".env"}
 CARRY_SKIP_DIRS = SKIP_DIRS - {"dist", "static"} | {".mypy_cache", ".next"}
 CARRY_SKIP_RE = re.compile(r"^\.env(\..*)?$")
 OLD_SUFFIX = "-before-stackkit"
+# Code every service keeps a copy of; each copy sits at the same path in it
+SHARED = "shared"
 MARKER_RE = re.compile(r"stackkit:(begin|end) ([a-z_,]+)")
 
 
@@ -334,16 +336,23 @@ def carry_over(dest: Path, copies: list[tuple[Path, Path]]) -> None:
 def remove_paths(dest: Path, module: dict) -> None:
     """Delete a module's folders and files.
 
+    A path under ``shared/`` goes from every service's copy of it too
+    (``api_service/gcp_services/...`` for ``shared/gcp_services/...``).
+
     :param dest: Project root
     :param module: The module's manifest entry
     :side effects: Deletes files under ``dest``
     """
     for rel in module.get("paths", []):
-        target = dest / rel
-        if target.is_dir():
-            shutil.rmtree(target)
-        elif target.exists():
-            target.unlink()
+        targets = [dest / rel]
+        if rel.startswith(SHARED + "/"):
+            inner = rel.removeprefix(SHARED + "/")
+            targets += [d / inner for d in dest.glob("*_service") if d.is_dir()]
+        for target in targets:
+            if target.is_dir():
+                shutil.rmtree(target)
+            elif target.exists():
+                target.unlink()
 
 
 def remove_json_keys(dest: Path, module: dict) -> None:
@@ -854,6 +863,11 @@ def add_modules(args: argparse.Namespace) -> dict:
         if legacy:
             use_old_names(base, legacy)
             use_old_names(after, legacy)
+        # A project made before shared/ keeps its clients in each service only
+        for folder in status.ADDED_LATER:
+            if status.predates(dest, folder):
+                shutil.rmtree(base / folder, ignore_errors=True)
+                shutil.rmtree(after / folder, ignore_errors=True)
         before_files = {p.relative_to(base) for p in base.rglob("*") if p.is_file()}
         after_files = {p.relative_to(after) for p in after.rglob("*") if p.is_file()}
 

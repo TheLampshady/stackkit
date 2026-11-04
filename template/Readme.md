@@ -65,6 +65,7 @@ Daily development commands. All commands use `make` targets defined in the root 
 | `make typecheck` | `ty` on `api_service/` and `agent_service/`, `tsc -b` on the frontend |
 | `make test` | pytest for `api_service/` and `agent_service/`, Vitest for the frontend |
 | `make hooks` | Run pre-commit across all files |
+| `make sync` | Copy `shared/gcp_services/` into each `*_service/` (run, test, build and deploy do it first) |
 | `make build` | Build the frontend and copy `frontend/dist/` into `api_service/static/` |
 | `make deploy-app` | Build, then deploy the service to App Engine |
 | `make deploy-cr` | Build, then deploy the service to Cloud Run |
@@ -74,7 +75,6 @@ Daily development commands. All commands use `make` targets defined in the root 
 | Command | Description |
 |---------|-------------|
 | `make adk-web` / `make adk-api` | Run the ADK web UI / API server against `agent_service/agents/` |
-| `make sync-agents` | Copy `api_service/gcp_services/` into `agent_service/` (service is the source of truth) |
 | `make deploy-agent` | Deploy to Agent Engine via `agent_service/deploy.py` |
 | `make deploy-agent-cr` | Deploy the agents to Cloud Run via `adk deploy` |
 
@@ -110,7 +110,7 @@ The repo is a uv workspace: `api_service/`, `agent_service/`, `gcp/` and `notebo
 |--------|---------|
 | `api_service/` | **Main application** — FastAPI backend (entry: `app.py`), API routes, GCP clients, tests |
 | `api_service/api/` | Route definitions (`router.py`) and app wiring — CORS, static mount, SPA fallback (`config_app.py`) |
-| `api_service/gcp_services/` | **Source of truth** for GCP/Firebase integrations — synced into `agent_service/` |
+| `shared/gcp_services/` | **Shared code** for GCP/Firebase integrations: edit it here; every `*_service/` keeps a copy, refreshed by `make sync` |
 | `agent_service/` | **Agents deploy unit** — self-contained ADK agents with their own settings and GCP services |
 | `agent_service/agents/` | Google ADK agent definitions (each agent has `agent.py` + `prompt.py`) |
 | `gcp/` | **Infrastructure** — Firebase emulator configs, Firestore rules/indexes, IAM scripts, and the `gcp` CLI |

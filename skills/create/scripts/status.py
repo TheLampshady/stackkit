@@ -73,6 +73,9 @@ SETUP_IAM = "make -C gcp setup-iam"
 # the rename still have. Every path the manifest names goes through
 # ``project_path``, so both layouts are read the same way.
 RENAMED = {"api_service": "service"}
+# Folders added later. Projects made before one keep its files in a server
+# folder instead, at the same path inside it.
+ADDED_LATER = {"shared": ("api_service", "service")}
 
 
 def legacy_dirs(dest: Path) -> dict[str, str]:
@@ -88,14 +91,32 @@ def legacy_dirs(dest: Path) -> dict[str, str]:
     }
 
 
+def predates(dest: Path, folder: str) -> bool:
+    """Whether a project was made before the template added a folder.
+
+    :param dest: Project root
+    :param folder: A key of ``ADDED_LATER``
+    :return: True when the folder is missing but its files are where they
+        used to be
+    """
+    return not (dest / folder).exists() and any(
+        (dest / old).is_dir() for old in ADDED_LATER[folder]
+    )
+
+
 def project_path(dest: Path, rel: str) -> Path:
-    """Resolve a template path in a project, under its old name if renamed.
+    """Resolve a template path in a project made by any version of stackkit.
 
     :param dest: Project root
     :param rel: Path as the template names it, such as ``api_service/app.yaml``
-    :return: Where that path is in this project
+    :return: Where that path is in this project: under a renamed folder's old
+        name, or for a folder added later, where its files used to be
     """
     first, _, rest = rel.partition("/")
+    if first in ADDED_LATER and predates(dest, first):
+        for old in ADDED_LATER[first]:
+            if (there := dest / old / rest if rest else dest / old).exists():
+                return there
     old = legacy_dirs(dest).get(first)
     return dest / (f"{old}/{rest}" if old and rest else old or rel)
 

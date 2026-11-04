@@ -40,12 +40,13 @@ The SPA is built into `api_service/static/` at deploy time, so in production the
 |-----------|---------|
 | `api_service/` | FastAPI backend (entry: `app.py`) |
 | `api_service/api/` | API routes (`router.py`) and app wiring (`config_app.py`) |
-| `api_service/gcp_services/` | GCP/Firebase service integrations — source of truth |
-| `api_service/gcp_services/clients/` | Pre-configured Firebase clients |
+| `shared/gcp_services/` | GCP/Firebase service integrations, the one to edit (see Service Boundaries) |
+| `shared/gcp_services/clients/` | Pre-configured Firebase clients |
+| `api_service/gcp_services/` | Copy of `shared/gcp_services/` |
 | `api_service/tests/` | pytest test suite for the service |
 | `agent_service/` | Self-contained ADK deploy unit — own settings, own `gcp_services/` |
 | `agent_service/agents/` | Google ADK agent definitions |
-| `agent_service/gcp_services/` | Synced copy of `api_service/gcp_services/` (see Service Boundaries) |
+| `agent_service/gcp_services/` | Copy of `shared/gcp_services/` |
 | `agent_service/tests/` | pytest test suite for the agents |
 | `frontend/` | React 19 SPA (Vite, Tailwind v4, shadcn/ui) |
 | `gcp/` | Emulator orchestration, Firestore rules/indexes, IAM scripts, `gcp` CLI |
@@ -53,9 +54,9 @@ The SPA is built into `api_service/static/` at deploy time, so in production the
 
 ### Service Boundaries
 
-`api_service/` and `agent_service/` are separate uv workspace packages that deploy independently — the service to App Engine or Cloud Run, the agents to Agent Engine or Cloud Run. They share GCP integration code by **copy, not import**: `make sync-agents` rsyncs `api_service/gcp_services/` into `agent_service/gcp_services/`, excluding `clients/gcp_services.py` so the agents keep their own Firestore-only client override.
+`api_service/` and `agent_service/` are separate uv workspace packages that deploy independently — the service to App Engine or Cloud Run, the agents to Agent Engine or Cloud Run. They share GCP integration code by **copy, not import**: `shared/gcp_services/` is the one to edit, and `shared/sync.sh` (`make sync`) copies it into every `*_service/gcp_services/`. The make targets that run, test, build or deploy a service sync first, so a copy is never stale.
 
-The copy exists because each package installs its own dependency set and deploys from its own directory; a shared import would drag the service's FastAPI and Storage dependencies into every agent deploy. The cost is that `api_service/gcp_services/` is the only place to edit these files — changes made in `agent_service/gcp_services/` are overwritten on the next sync.
+The copy exists because each package deploys from its own directory and installs its own dependency set; App Engine, Cloud Run and Agent Engine upload only that directory. The sync copies a shared file only when it's newer than the copy. A copy edited by hand is never overwritten: the sync fails and names the file, so the change can be moved to `shared/gcp_services/`.
 
 ## Data Model
 
@@ -111,10 +112,10 @@ sequenceDiagram
 
 | Module | Purpose | Location |
 |--------|---------|----------|
-| `gcp_services` | Firebase client factory | `api_service/gcp_services/clients/gcp_services.py` |
+| `gcp_services` | Firebase client factory | `shared/gcp_services/clients/gcp_services.py` |
 | `app_settings` | Dual-mode configuration | `api_service/app_settings.py` |
-| `fb_auth` | Firebase Auth decorator and validation | `api_service/gcp_services/clients/fb_auth.py` |
-| `iap_auth` | IAP identity decorator and middleware | `api_service/gcp_services/clients/iap_auth.py` |
+| `fb_auth` | Firebase Auth decorator and validation | `shared/gcp_services/clients/fb_auth.py` |
+| `iap_auth` | IAP identity decorator and middleware | `shared/gcp_services/clients/iap_auth.py` |
 | `config_app` | CORS, static mount, SPA fallback, warmup route | `api_service/api/config_app.py` |
 | `router` | API routes (prefix `/api`) | `api_service/api/router.py` |
 | `agents` | ADK agent definitions | `agent_service/agents/` |
@@ -143,7 +144,7 @@ from gcp_services.clients.gcp_services import db, bucket, auth_client
 
 ### Authentication
 
-Two interchangeable options live in `api_service/gcp_services/clients/`. Both check the
+Two interchangeable options live in `shared/gcp_services/clients/`. Both check the
 email against `settings.valid_domains` (`VALID_DOMAINS` env: domains or full
 addresses, default blank, which allows any account) and attach the caller to
 `request.state.user`.
@@ -211,7 +212,7 @@ Must export `root_agent` in each agent module.
 | Dual-mode config | Environment detection | Seamless local/cloud development |
 | Firebase emulators | Local development | No cloud costs, offline capability |
 | ADK agents | Google ADK | Native GCP integration, Vertex AI support |
-| Agent packaging | Separate uv package, code synced by copy | Keeps FastAPI/Storage dependencies out of the agent deploy; the alternative — one package importing shared code — makes every agent deploy carry the whole service |
+| Service packaging | Separate uv package per service, shared code synced by copy | Each deploy uploads one folder with only its own dependencies; the alternative, one package importing shared code, makes every deploy carry every service |
 | Frontend delivery | Built into `api_service/static/` | One deploy unit and same-origin requests in production; the alternative is a second hosting target plus CORS |
 
 ## Related Documentation

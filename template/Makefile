@@ -50,6 +50,14 @@ TEST_TARGETS += test-agents
 CHECK_TARGETS += check-agents
 # stackkit:end agents
 
+# stackkit:begin shared
+# Every service deploys from its own folder with a copy of shared/gcp_services/.
+# The targets that run, test, build or deploy a service refresh the copies first.
+.PHONY: sync
+sync:
+	@shared/sync.sh
+
+# stackkit:end shared
 # ------ SETUP ------
 .PHONY: setup setup-be
 setup: $(SETUP_TARGETS)
@@ -78,7 +86,7 @@ else
 endif
 # stackkit:end frontend
 
-run-be:
+run-be: sync
 	$(MAKE) -C ${SERVICE_DIR} run
 
 # stackkit:end api
@@ -131,10 +139,10 @@ check: $(CHECK_TARGETS)
 
 # stackkit:begin api
 .PHONY: typecheck-be test-be
-typecheck-be:
+typecheck-be: sync
 	cd ${SERVICE_DIR} && uv run --all-groups ty check .
 
-test-be:
+test-be: sync
 	cd ${SERVICE_DIR} && uv run --all-groups pytest tests
 
 # stackkit:end api
@@ -176,7 +184,7 @@ check-fe: lint-fe format-fe typecheck-fe test-fe
 
 # stackkit:begin agents
 # ------ AGENTS ------
-.PHONY: deploy-agent deploy-agent-cr adk-web adk-api sync-agents typecheck-agents test-agents check-agents
+.PHONY: deploy-agent deploy-agent-cr adk-web adk-api typecheck-agents test-agents check-agents
 deploy-agent:
 	$(MAKE) -C $(AGENTS_DIR) deploy-agent
 
@@ -189,13 +197,10 @@ adk-web:
 adk-api:
 	$(MAKE) -C $(AGENTS_DIR) adk-api
 
-sync-agents:
-	$(MAKE) -C $(AGENTS_DIR) sync-agents
-
-typecheck-agents:
+typecheck-agents: sync
 	cd ${AGENTS_DIR} && uv run --all-groups ty check .
 
-test-agents:
+test-agents: sync
 	cd ${AGENTS_DIR} && uv run --all-groups pytest tests
 
 check-agents: typecheck-agents test-agents

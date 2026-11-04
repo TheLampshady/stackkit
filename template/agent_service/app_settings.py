@@ -123,6 +123,11 @@ class Settings(BaseSettings):
     # TODO feel free to hard code a name
     namespace: str | None = os.environ.get("NAMESPACE") or None
     firestore_db_name: str | None = os.environ.get("FIRESTORE_DB_NAME") or namespace
+    # stackkit:begin storage
+    firestore_bucket_name: str | None = os.environ.get("FIRESTORE_BUCKET_NAME") or (
+        f"{project_id}-{namespace}" if namespace else None
+    )
+    # stackkit:end storage
 
     # Auth: email domains allowed through fb_auth and iap_auth.
     # Blank (VALID_DOMAINS=) disables the domain check and allows any account.

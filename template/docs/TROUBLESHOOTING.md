@@ -171,13 +171,13 @@ cd agent_service && uv run --all-groups pytest tests
 ```
 `make test` does this for you, plus the frontend.
 
-### Agent code changes disappear
+### "was edited directly" from make
 
-**Symptom**: an edit inside `agent_service/gcp_services/` is gone after a build or deploy
+**Symptom**: `make run`, `make check` or a deploy stops with `<folder>/gcp_services/<file> was edited directly`
 
-**Cause**: `make sync-agents` rsyncs `api_service/gcp_services/` over it. `api_service/` is the source of truth for everything except `agent_service/gcp_services/clients/gcp_services.py`, which is excluded from the sync.
+**Cause**: each `*_service/gcp_services/` is a copy of `shared/gcp_services/`, refreshed before every run, test, build and deploy. That copy was changed by hand, so refreshing it would lose the change.
 
-**Solution**: make the change in `api_service/gcp_services/`, then `make sync-agents`.
+**Solution**: make the same change in `shared/gcp_services/<file>`, then `make sync`. Edits in `shared/` reach every service.
 
 ## GCloud CLI Issues
 

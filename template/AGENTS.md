@@ -41,7 +41,7 @@ make adk-web            # Sync GCP services + start ADK web UI (agents)
 make adk-api            # Sync GCP services + start ADK API server (agents)
 make deploy-agent       # Sync + deploy to Agent Engine via deploy.py
 make deploy-agent-cr    # Sync + deploy to Cloud Run via adk deploy
-make sync-agents        # Copy shared GCP service files to agent_service/
+make sync               # Copy shared/gcp_services/ into each *_service/ (run/test/build/deploy do it first)
 
 # Cloud Setup (run once per project, or when secrets change)
 bash gcp/bin/setup_iam.sh   # Grant the server's service accounts their roles (reads PROJECT_ID from .env; needs Owner or Project IAM Admin)
@@ -55,11 +55,11 @@ bash gcp/bin/setup_iam.sh   # Grant the server's service accounts their roles (r
 ### Directory Structure
 - `frontend/` - React SPA (Vite + Tailwind v4 + shadcn/ui)
 - `api_service/` - FastAPI backend (entry: `app.py`)
-- `api_service/gcp_services/` - GCP service modules (source of truth, synced to agent_service/)
-- `api_service/gcp_services/clients/` - Pre-configured Firebase clients (`db`, `auth_client`, `bucket`)
+- `shared/gcp_services/` - GCP service modules: the one to edit. Each `*_service/` keeps an exact copy, refreshed by `make sync`
+- `shared/gcp_services/clients/` - Pre-configured Firebase clients (`db`, `auth_client`, `bucket`)
 - `agent_service/` - ADK agents deploy unit (self-contained with own settings + GCP services)
 - `agent_service/agents/` - Google ADK agent definitions (each folder: `agent.py` + `prompt.py`)
-- `agent_service/gcp_services/` - Synced subset of api_service/gcp_services/ (Firestore only, no auth/storage)
+- `agent_service/gcp_services/` - Copy of shared/gcp_services/; never edit it directly
 - `agent_service/deploy.py` - Agent Engine deployment via vertexai.agent_engines
 - `gcp/` - Firebase emulator orchestration and deployment tooling
 - `notebooks/` - ML experimentation with Vertex AI
@@ -81,7 +81,7 @@ Clients auto-detect emulator mode via `settings.use_emulator`.
 All API routes go through `api_service/api/router.py` via `api_router` (prefix: `/api`). App entry point is `api_service/app.py`.
 
 ### Authentication
-Two options in `api_service/gcp_services/clients/`, both attach the caller to `request.state.user`
+Two options in `shared/gcp_services/clients/`, both attach the caller to `request.state.user`
 and check the email against `settings.valid_domains` (`VALID_DOMAINS` env: domains or full addresses,
 comma separated, default blank; blank disables the check and allows any account):
 

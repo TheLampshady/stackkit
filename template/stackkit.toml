@@ -36,7 +36,7 @@ keys = ["PROJECT_ID", "NAMESPACE", "VALID_DOMAINS"]
 [modules.api]
 summary = "The backend (FastAPI). Without it the project is a static site."
 # gcp/bin/setup_iam.sh grants the server's accounts their roles
-requires = ["gcp"]
+requires = ["gcp", "shared"]
 paths = [
     "api_service",
     ".run/Service.run.xml",
@@ -68,13 +68,13 @@ refs = ["frontend/", "bun ", "Vite", "run-fe", "build-fe"]
 
 [modules.agents]
 summary = "AI agents that run on their own (Google ADK), deployed separately. Their prompts live in the database."
-requires = ["ai", "database"]
+requires = ["ai", "database", "shared"]
 # Deploys on its own with its own copies of the shared clients, so other
 # modules' refs aren't checked inside it.
 self_contained = true
 paths = ["agent_service"]
 workspace_member = "agent_service"
-refs = ["agent_service", "adk-web", "adk-api", "deploy-agent", "sync-agents"]
+refs = ["agent_service", "adk-web", "adk-api", "deploy-agent"]
 
 [modules.notebooks]
 summary = "Jupyter notebooks for AI/ML experiments."
@@ -116,7 +116,7 @@ refs = [
 summary = "Keeps uploaded files such as photos and PDFs (Cloud Storage)."
 requires = ["api", "firebase"]
 paths = [
-    "api_service/gcp_services/clients/gcp_storage.py",
+    "shared/gcp_services/clients/gcp_storage.py",
     "gcp/storage.rules",
     "gcp/cors.json",
 ]
@@ -136,7 +136,7 @@ refs = [
 [modules.auth_iap]
 summary = "Team-only access: Google's Identity-Aware Proxy in front of the whole app."
 paths = [
-    "api_service/gcp_services/clients/iap_auth.py",
+    "shared/gcp_services/clients/iap_auth.py",
     "api_service/tests/test_iap_auth.py",
     "gcp/bin/setup_iap.sh",
 ]
@@ -157,7 +157,7 @@ refs = [
 summary = "Accounts people sign up for (Firebase Auth). The server side only; login screens are built on top."
 requires = ["api", "firebase"]
 paths = [
-    "api_service/gcp_services/clients/fb_auth.py",
+    "shared/gcp_services/clients/fb_auth.py",
     "gcp/bin/test_auth.py",
 ]
 json_keys = { "gcp/firebase.json" = ["emulators.auth"] }
@@ -166,7 +166,7 @@ refs = ["fb_auth", "firebase_auth_required", "auth_client", "test_auth.py"]
 [modules.ai]
 summary = "One-off AI calls from the API (Gemini or Claude on Vertex AI)."
 requires = ["api"]
-paths = ["api_service/gcp_services/clients/gcp_vertex.py"]
+paths = ["shared/gcp_services/clients/gcp_vertex.py"]
 refs = ["gcp_vertex", "default_text_model", "DEFAULT_TEXT_MODEL"]
 
 [modules.firebase]
@@ -174,8 +174,8 @@ summary = "The Firebase app and its local emulator, shared by database, storage 
 implicit = true
 requires = ["gcp"]
 paths = [
-    "api_service/gcp_services/clients/gcp_services.py",
-    "api_service/gcp_services/clients/fb_config.py",
+    "shared/gcp_services/clients/gcp_services.py",
+    "shared/gcp_services/clients/fb_config.py",
     "gcp/firebase.json",
     "gcp/.firebaserc",
     "gcp/.gitignore",
@@ -225,6 +225,14 @@ refs = ["deploy-cr", "Procfile", "run.app", "gcloud run"]
 summary = "Keeps one server instance running so visits never wait for a start. Billed while idle."
 requires = ["api"]
 refs = ["min_instances", "MIN_INSTANCES := 1"]
+
+[modules.shared]
+summary = "The Google clients each server folder keeps a copy of, and the sync that keeps the copies current."
+implicit = true
+# Paths under shared/ name every service's copy too: removing
+# shared/gcp_services/x.py also removes api_service/gcp_services/x.py.
+paths = ["shared"]
+refs = ["shared/", "sync.sh"]
 
 [modules.gcp]
 summary = "The gcp/ tooling folder: emulator, provisioning, service account roles (setup-iam) and App Engine helpers."

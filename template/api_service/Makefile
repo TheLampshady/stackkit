@@ -5,14 +5,19 @@ REGION ?= us-central1
 
 # ------ BUILD ------
 
-.PHONY: build
-build:
+.PHONY: sync build
+# Refresh this folder's copy of shared/gcp_services/. Projects made before
+# shared/ existed have none, and keep their copies by hand.
+sync:
+	@if [ -f ../shared/sync.sh ]; then ../shared/sync.sh; fi
+
+build: sync
 	uv export --frozen --package api-service --no-dev --no-hashes --format requirements-txt > requirements.txt
 
 # ------ RUN ------
 
 .PHONY: run
-run:
+run: sync
 	uv run --project .. uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 
 
