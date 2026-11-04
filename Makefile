@@ -19,11 +19,15 @@ RUFF := uvx -q ruff@0.17.1
 
 .PHONY: lint
 lint: ## Check the scripts and template are ruff-clean as they stand
-	$(RUFF) check skills template
-	$(RUFF) format --check skills template
+	$(RUFF) check skills template dev
+	$(RUFF) format --check skills template dev
+
+.PHONY: check-versions
+check-versions: ## Compare the pinned Java/Node versions with what the latest Firebase CLI needs
+	@uv run --python 3.13 --no-project dev/check_versions.py
 
 .PHONY: test-bootstrap
-test-bootstrap: lint ## Lint, bootstrap sample projects, check for leftovers, run `make check` in each
+test-bootstrap: lint check-versions ## Lint, bootstrap sample projects (convert one existing repo, grow one by adding parts), check for leftovers, run `make check` and `make build` in each
 	@set -e; mkdir -p $(SAMPLES); for spec in $(SAMPLE_SPECS); do \
 		name=$${spec%%:*}; remove=$${spec#*:}; dest=$(SAMPLES)/$$name; \
 		echo "── $$name (remove: $${remove:-none})"; \
@@ -31,11 +35,48 @@ test-bootstrap: lint ## Lint, bootstrap sample projects, check for leftovers, ru
 			--dest $$dest --name sample-$$name --display-name "Sample $$name" \
 			--remove "$$remove" > $$dest-boot.json || { cat $$dest-boot.json; exit 1; }; \
 		if grep -rq "stackkit" $$dest; then echo "stackkit traces left in $$dest"; exit 1; fi; \
+		uv run --python 3.13 --no-project dev/check_docs.py $$dest || exit 1; \
 		if grep -E '^ +"[^"]+:[0-9]+: ' $$dest-boot.json | grep -vE '^ +"[^"]+\.md:[0-9]+: '; then \
 			echo "   leftover refs in code: wrap them in markers"; exit 1; fi; \
 		uv run --python 3.13 --no-project skills/create/scripts/check.py --dest $$dest > $$dest.json \
-			|| { cat $$dest.json; exit 1; }; echo "   ✓ make check"; \
-	done; rm -rf $(SAMPLES)
+			|| { cat $$dest.json; exit 1; }; echo "   ✓ make check, make build"; \
+		python3 -c 'import json, sys; b, c = (json.load(open(f)) for f in sys.argv[1:]); \
+			k, s = sorted(b["kept"]), sorted(c["status"]["parts"]); \
+			sys.exit(0 if k == s else f"   status sees {s}, bootstrap kept {k}")' \
+			$$dest-boot.json $$dest.json; echo "   ✓ status sees the kept parts"; \
+		if [ -f $$dest/gcp/bin/setup_iam.sh ]; then bash -n $$dest/gcp/bin/setup_iam.sh \
+			&& echo "   ✓ setup_iam.sh parses" || exit 1; fi; \
+	done; \
+	echo "── convert (an existing repo turned into a static site in place)"; \
+	old=$(SAMPLES)/convert; mkdir -p $$old/images $$old/src; \
+	echo '<h1>Menu</h1>' > $$old/index.html; echo img > $$old/images/a.png; \
+	echo KEY=1 > $$old/images/.env; echo x > $$old/src/app.js; mkdir $$old/.git; \
+	uv run --python 3.13 --no-project skills/create/scripts/bootstrap.py --convert \
+		--dest $$old --name sample-convert --display-name "Sample convert" \
+		--remove api,agents,notebooks,http_tests,auth_firebase,database,storage,ai,cloud_run,always_on \
+		--copy $$old/images=frontend/public/images > $$old-boot.json || { cat $$old-boot.json; exit 1; }; \
+	test -d $$old/.git && test -f $$old/frontend/public/images/a.png \
+		&& test ! -e $$old/frontend/public/images/.env && test ! -e $$old/src \
+		&& test -f $$old-before-stackkit/index.html && test -f $$old-before-stackkit/src/app.js \
+		|| { echo "   convert left the wrong layout"; exit 1; }; \
+	uv run --python 3.13 --no-project skills/create/scripts/check.py --dest $$old > $$old.json \
+		|| { cat $$old.json; exit 1; }; echo "   ✓ layout, make check, make build"; \
+	echo "── add (an API-only project grows a web page, database and team sign-in)"; \
+	grow=$(SAMPLES)/grow; fresh=$(SAMPLES)/grow-fresh; \
+	uv run --python 3.13 --no-project skills/create/scripts/bootstrap.py --dest $$grow \
+		--name sample-grow --display-name "Sample grow" --env NAMESPACE=sample-grow \
+		--remove frontend,agents,notebooks,http_tests,auth_iap,auth_firebase,database,storage,ai,gae,always_on \
+		> $$grow-boot.json || { cat $$grow-boot.json; exit 1; }; \
+	uv run --python 3.13 --no-project skills/create/scripts/bootstrap.py --dest $$grow \
+		--add frontend,database,auth_iap --display-name "Sample grow" > $$grow-add.json \
+		|| { cat $$grow-add.json; exit 1; }; \
+	uv run --python 3.13 --no-project skills/create/scripts/bootstrap.py --dest $$fresh \
+		--name sample-grow --display-name "Sample grow" --env NAMESPACE=sample-grow \
+		--remove agents,notebooks,http_tests,auth_firebase,storage,ai,gae,always_on > /dev/null; \
+	diff -rq $$grow $$fresh -x .env -x uv.lock || { echo "   adding differs from a fresh project"; exit 1; }; \
+	uv run --python 3.13 --no-project skills/create/scripts/check.py --dest $$grow > $$grow.json \
+		|| { cat $$grow.json; exit 1; }; echo "   ✓ same as a fresh project, make check, make build"; \
+	rm -rf $(SAMPLES)
 
 .PHONY: claude
 claude: ## Reinstall this repo as a Claude plugin (local scope) — safe to re-run

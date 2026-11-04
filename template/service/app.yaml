@@ -5,6 +5,10 @@ automatic_scaling:
   # One instance stays up so visits never wait for a start (billed while idle)
   min_instances: 1
   # stackkit:end always_on
+  # Caps how many run at once, so a traffic spike can't run up the bill.
+  # stackkit:begin cloud_run
+  # Keep it in step with MAX_INSTANCES in service/Makefile.
+  # stackkit:end cloud_run
   max_instances: 2
 
 entrypoint: gunicorn -w 1 -k uvicorn.workers.UvicornWorker app:app  # Change 'main:app' if your main FastAPI app is named differently
@@ -27,6 +31,11 @@ handlers:
 
   - url: /api.*
     script: auto
+
+  # Files the web page ships with (logo, favicon, robots.txt): anything with an extension
+  - url: /(.*\.[a-zA-Z0-9]+)$
+    static_files: static/\1
+    upload: static/.*\.[a-zA-Z0-9]+$
 
   - url: /(.*)
     static_files: static/index.html

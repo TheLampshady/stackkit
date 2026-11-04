@@ -68,14 +68,16 @@ Enable required APIs in GCP Console:
 - Secret Manager API
 - Vertex AI API
 
+<!-- stackkit:begin ai -->
 ### 4. LLM Authentication (no API key)
 
 Gemini calls go through Vertex AI using Application Default Credentials. There is no API key anywhere in the project, and none should be added (see constitution Service Pattern VI).
 
 - **Local**: `gcloud auth application-default login`. Both `app_settings.py` files set `GOOGLE_GENAI_USE_VERTEXAI=true` and `GOOGLE_CLOUD_PROJECT`, so the FastAPI service and `adk web` both use your ADC.
-- **Cloud**: the runtime service account. It needs `roles/aiplatform.user`; the App Engine default SA's Editor role covers this unless it has been pruned.
+- **Cloud**: the runtime service account. It needs `roles/aiplatform.user`, which `make -C gcp setup-iam` grants (newer projects no longer give default service accounts the Editor role that used to cover it).
 
 If you have a leftover `GOOGLE_API_KEY` in `.env`, remove it. The genai client ignores it once the Vertex flag is set, but it is misleading and invites key-based code.
+<!-- stackkit:end ai -->
 
 ## Deployment
 
@@ -140,7 +142,7 @@ Run from `gcp/`.
 
 | Command | Purpose |
 |---------|---------|
-| `make setup-iam` | Grant the App Engine service account its runtime roles (see Security) |
+| `make setup-iam` | Grant the server's service accounts their roles (see Security) |
 | `make rules` | Deploy `firestore.rules` |
 | `make indexes` | Deploy `firestore.indexes.json` |
 | `make indexes-save` | Write the live index config back to `firestore.indexes.json` |
@@ -170,7 +172,7 @@ uv run gcp/cli.py split-cookie https://your-app.appspot.com/
 
 ### Service Accounts
 
-App Engine runs as the default service account, `<project-id>@appspot.gserviceaccount.com`. It does **not** get Secret Manager or token-signing access by default — those must be granted explicitly:
+The server runs as a default service account: `<project-id>@appspot.gserviceaccount.com` on App Engine, `<project-number>-compute@developer.gserviceaccount.com` on Cloud Run. Newer Google Cloud projects no longer give these accounts the Editor role, so they get **no** access by default. Someone who can change the project's permissions (Owner, or Project IAM Admin) grants it once, and again after adding a secret:
 
 ```bash
 cd gcp && make setup-iam    # or: bash gcp/bin/setup_iam.sh
@@ -181,9 +183,28 @@ The script reads `PROJECT_ID` from the root `.env` and grants:
 | Role | Purpose | Scope |
 |------|---------|-------|
 | `roles/secretmanager.secretAccessor` | Read secrets at startup (`load_secrets()`) | Per-secret, for each name in the script's `SECRETS` array |
+<!-- stackkit:begin database -->
+| `roles/datastore.user` | Read and write Firestore | Project |
+<!-- stackkit:end database -->
+<!-- stackkit:begin storage -->
+| `roles/storage.objectUser` | Read and write the file bucket | Project |
 | `roles/iam.serviceAccountTokenCreator` | Sign GCS URLs for Storage operations | On the service account itself |
+<!-- stackkit:end storage -->
+<!-- stackkit:begin auth_firebase -->
+| `roles/firebaseauth.viewer` | Look up signed-in users | Project |
+<!-- stackkit:end auth_firebase -->
+<!-- stackkit:begin ai -->
+| `roles/aiplatform.user` | Call Gemini and Claude on Vertex AI | Project |
+<!-- stackkit:end ai -->
+<!-- stackkit:begin cloud_run,agents -->
+| `roles/run.builder` | Build Cloud Run source deploys, granted to the Compute Engine default account. Without it, deploying to Cloud Run fails with a permission error | Project |
+<!-- stackkit:end cloud_run,agents -->
+<!-- stackkit:begin agents -->
 
-Firestore, Storage, and Vertex AI access come with the default service account's project-level roles. Adding a secret means editing both `SECRET_KEY_NAMES` in `service/app_settings.py` and the `SECRETS` array in `gcp/bin/setup_iam.sh`, then re-running the script before deploying.
+Agents deploy on their own, so the script also grants the accounts they run as: `roles/datastore.user` and `roles/aiplatform.user` to the Compute Engine default account (`make deploy-agent-cr`), and `roles/datastore.user` to the Agent Engine service agent, `service-<project-number>@gcp-sa-aiplatform-re.iam.gserviceaccount.com` (`make deploy-agent`), whose own role already covers Vertex AI. Google creates that service agent on the first Agent Engine deploy, so rerun the script after it.
+<!-- stackkit:end agents -->
+
+Adding a secret means editing both `SECRET_KEY_NAMES` in `service/app_settings.py` and the `SECRETS` array in `gcp/bin/setup_iam.sh`, then re-running the script before deploying.
 
 ### Storage Bucket CORS
 
@@ -197,8 +218,9 @@ The current policy allows `GET` from any origin with a one-hour cache. Restrict 
 
 ### Domain Whitelisting
 
-Both auth options check the email domain against `settings.valid_domains`
-(`VALID_DOMAINS` env var, comma separated, default blank). Leave it blank
+Both auth options check the email against `settings.valid_domains`
+(`VALID_DOMAINS` env var: domains like `example.com` or full addresses like
+`someone@gmail.com`, comma separated, default blank). Leave it blank
 (`VALID_DOMAINS=`) to disable the check and allow any Google account:
 
 - `@firebase_auth_required()` - valid Firebase Auth token, then domain check

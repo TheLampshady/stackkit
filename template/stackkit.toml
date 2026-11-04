@@ -35,12 +35,15 @@ keys = ["PROJECT_ID", "NAMESPACE", "VALID_DOMAINS"]
 
 [modules.api]
 summary = "The backend (FastAPI). Without it the project is a static site."
+# gcp/bin/setup_iam.sh grants the server's accounts their roles
+requires = ["gcp"]
 paths = [
     "service",
     ".run/Service.run.xml",
     "frontend/src/lib/api.ts",
     "frontend/src/lib/api.test.ts",
     "frontend/src/lib/types.ts",
+    "gcp/bin/setup_iam.sh",
 ]
 workspace_member = "service"
 # The static site's own deploy; an API project serves the frontend itself
@@ -54,6 +57,8 @@ refs = [
     "typecheck-be",
     "@/lib/api",
     "/api/",
+    "setup-iam",
+    "setup_iam",
 ]
 
 [modules.frontend]
@@ -197,7 +202,6 @@ paths = [
     "service/app.yaml",
     "gcp/dispatch.yaml",
     "gcp/commands/split_cookie.py",
-    "gcp/bin/setup_iam.sh",
     "frontend/app.yaml",
     "frontend/.gcloudignore",
     "frontend/Makefile",
@@ -208,8 +212,6 @@ refs = [
     "dispatch.yaml",
     "split-cookie",
     "split_cookie",
-    "setup-iam",
-    "setup_iam",
     "_ah/warmup",
 ]
 
@@ -222,10 +224,10 @@ refs = ["deploy-cr", "Procfile", "run.app", "gcloud run"]
 [modules.always_on]
 summary = "Keeps one server instance running so visits never wait for a start. Billed while idle."
 requires = ["api"]
-refs = ["min_instances", "min-instances=1"]
+refs = ["min_instances", "MIN_INSTANCES := 1"]
 
 [modules.gcp]
-summary = "The gcp/ tooling folder: emulator, provisioning and App Engine helpers."
+summary = "The gcp/ tooling folder: emulator, provisioning, service account roles (setup-iam) and App Engine helpers."
 implicit = true
 paths = ["gcp"]
 workspace_member = "gcp"

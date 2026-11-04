@@ -4,12 +4,7 @@
 # dispatch: []
 
 dispatch:
-  # stackkit:begin api
-  # Handle API endpoint service
-  - url: "*/api/*"
-    service: api
-  # stackkit:end api
-
-  # default static service (this is default already)
+  # The default service serves everything, the server's routes included. Add a
+  # rule here only if part of the app moves to a separate App Engine service.
   - url: "*/*"
     service: default

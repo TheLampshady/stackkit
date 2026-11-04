@@ -68,6 +68,11 @@ class TestIsAllowedDomain:
     def test_rejected(self, email):
         assert not is_allowed_domain(email, DOMAINS)
 
+    def test_full_address_lets_one_person_in(self):
+        allowed = ["example.com", "owner@gmail.com"]
+        assert is_allowed_domain("owner@gmail.com", allowed)
+        assert not is_allowed_domain("stranger@gmail.com", allowed)
+
     def test_empty_allow_list_allows_any_domain(self):
         assert is_allowed_domain("user@anywhere.org", [])
 

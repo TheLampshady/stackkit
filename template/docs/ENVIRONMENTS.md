@@ -15,7 +15,7 @@
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - [GCloud CLI](https://cloud.google.com/sdk/docs/install)
 - [Firebase CLI](https://firebase.google.com/docs/cli)
-- Java 11+ (for Firebase emulators)
+- Java, at the version in [step 5](#5-install-java-for-emulators) (for Firebase emulators)
 
 ### System Setup
 
@@ -49,20 +49,32 @@ gcloud auth application-default set-quota-project <PROJECT_ID>
 
 #### 4. Install Firebase CLI
 
+The standalone CLI brings its own Node, so there's no Node version to manage:
+
 ```bash
 curl -sL https://firebase.tools | bash
-firebase login
+firebase login   # only needed for cloud commands, not the emulators
 ```
+
+If you installed it with npm instead, it needs Node 20 or newer. On an older Node, run
+`npm uninstall -g firebase-tools` and use the command above.
 
 #### 5. Install Java (for emulators)
 
-```bash
-brew install java11
+The Firebase CLI refuses Java older than 21 (since CLI v15). The emulators only need a Java
+runtime, and the smallest free choices are:
 
-# M1/M2 Macs require additional symlink:
-sudo ln -sfn /opt/homebrew/opt/openjdk@11/libexec/openjdk.jdk \
-     /Library/Java/JavaVirtualMachines/openjdk-11.jdk
+```bash
+# Ubuntu 22.04+ / WSL: the runtime alone, no desktop parts
+sudo apt-get update && sudo apt-get install -y openjdk-21-jre-headless
+
+# macOS: Eclipse Temurin, a free OpenJDK build (no symlink needed)
+brew install --cask temurin@21
 ```
+
+Check with `java -version`. If it still shows an older version on Ubuntu, pick 21 with
+`sudo update-alternatives --config java`. On Debian 12 or older Ubuntu, which don't package
+Java 21, install [Eclipse Temurin 21](https://adoptium.net/installation/linux/).
 
 ### Project Setup
 
@@ -145,7 +157,12 @@ Run all three configurations together using PyCharm's compound run configuration
 
 ## Cloud (GCP)
 
+<!-- stackkit:begin gae -->
 **Deployment**: App Engine
+<!-- stackkit:end gae -->
+<!-- stackkit:begin cloud_run -->
+**Deployment**: Cloud Run
+<!-- stackkit:end cloud_run -->
 
 ### Environment Variables
 
@@ -160,9 +177,60 @@ Cloud environment variables are:
 | `NAMESPACE` | `service/app.yaml` `env_variables` (interpolated from `.env` at deploy time) |
 | `GOOGLE_CLOUD_LOCATION` | Environment / Default: `us-central1` |
 
-### IAM Roles for Deployment
+### Google Cloud Access
 
-To deploy the application to App Engine, your deploying Google Cloud account (or service account) requires the following IAM roles:
+Setting the project up in Google Cloud and putting it online need permissions on the Google Cloud project. There are three ways to have them:
+
+1. **The Owner role** on the project. It's a basic role (Google also calls these legacy roles) that covers every step below.
+2. **The specific roles** for the steps you do, listed below.
+3. **Someone who has them**, such as an admin or a friend with Owner, does those steps for you.
+
+| Step | Command | Roles, if not Owner |
+|------|---------|---------------------|
+<!-- stackkit:begin api -->
+| Grant the server's accounts their roles | `make -C gcp setup-iam` | Project IAM Admin (`roles/resourcemanager.projectIamAdmin`) |
+<!-- stackkit:end api -->
+<!-- stackkit:begin auth_iap -->
+| Set up team sign-in | `make -C gcp iap-prepare` and the steps after it ("IAP First-Time Setup" in `docs/CLOUD.md`) | Owner: the setup needs it |
+<!-- stackkit:end auth_iap -->
+<!-- stackkit:begin database -->
+| Create the database | `make -C gcp provision` | Cloud Datastore Owner (`roles/datastore.owner`) |
+<!-- stackkit:end database -->
+<!-- stackkit:begin storage -->
+| Create the file bucket | `make -C gcp provision` | Storage Admin (`roles/storage.admin`) |
+<!-- stackkit:end storage -->
+<!-- stackkit:begin api -->
+| Add keys to Secret Manager | `gcloud secrets create` | Secret Manager Admin (`roles/secretmanager.admin`) |
+<!-- stackkit:end api -->
+<!-- stackkit:begin gae -->
+| Put it online on App Engine | `make deploy-app` | The App Engine deploy roles below |
+<!-- stackkit:end gae -->
+<!-- stackkit:begin cloud_run -->
+| Put it online on Cloud Run | `make deploy-cr` | The Cloud Run deploy roles below |
+<!-- stackkit:end cloud_run -->
+
+<!-- stackkit:begin api -->
+On new projects, the server's own accounts have no access until `setup-iam` runs: Google no longer gives default service accounts the Editor role.
+<!-- stackkit:begin cloud_run -->
+On Cloud Run, a deploy before that fails with a permission error, because the build account is missing Cloud Run Builder.
+<!-- stackkit:end cloud_run -->
+<!-- stackkit:end api -->
+
+<!-- stackkit:begin cloud_run -->
+#### Deploy roles: Cloud Run
+
+| Role | Name | Purpose | Scope |
+|------|------|---------|-------|
+| Cloud Run Source Developer | `roles/run.sourceDeveloper` | To deploy from source | Project |
+| Service Usage Consumer | `roles/serviceusage.serviceUsageConsumer` | To use the project's APIs | Project |
+| Service Account User | `roles/iam.serviceAccountUser` | To deploy as the server's account | The Compute Engine default service account, or Project |
+| Cloud Run Admin | `roles/run.admin` | Only for a public service (no team sign-in): to let anyone open it. Source Developer can't, so without it the deploy succeeds but visitors are turned away | Project |
+
+The Compute Engine default service account (`<PROJECT_NUMBER>-compute@developer.gserviceaccount.com`) builds the source and needs Cloud Run Builder (`roles/run.builder`); `make -C gcp setup-iam` grants it.
+
+<!-- stackkit:end cloud_run -->
+<!-- stackkit:begin gae -->
+#### Deploy roles: App Engine
 
 | Role | Name | Purpose | Scope |
 |------|------|---------|-------|
@@ -198,11 +266,19 @@ gcloud storage buckets add-iam-policy-binding gs://staging.<PROJECT_ID>.appspot.
     --role="roles/storage.objectAdmin"
 ```
 
+<!-- stackkit:end gae -->
 ### Deployment
 
+<!-- stackkit:begin gae -->
 ```bash
-make deploy-app
+make deploy-app   # App Engine
 ```
+<!-- stackkit:end gae -->
+<!-- stackkit:begin cloud_run -->
+```bash
+make deploy-cr    # Cloud Run
+```
+<!-- stackkit:end cloud_run -->
 
 ## Secrets Management
 
@@ -220,7 +296,7 @@ The list of secrets to load is `SECRET_KEY_NAMES` in `service/app_settings.py`. 
 
 2. Add the name to `SECRET_KEY_NAMES` in `service/app_settings.py`.
 
-3. Add the same name to the `SECRETS` array in `gcp/bin/setup_iam.sh` and re-run it — the App Engine service account has no access to a new secret until you do.
+3. Add the same name to the `SECRETS` array in `gcp/bin/setup_iam.sh` and re-run it — the server's service account has no access to a new secret until you do.
 
 4. For local runs, put the value in `.env` directly.
 

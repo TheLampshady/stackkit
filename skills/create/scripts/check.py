@@ -2,10 +2,15 @@
 Install a new project's dependencies and run its checks.
 
 Runs, in the project folder: ``git init`` (if git is installed), ``uv lock``,
-``uv sync``, ``bun install`` (if the frontend was kept), then ``make check``.
-Stops at the first step that fails. One script instead of five commands, so
-the skill needs a single permission rule for all of them. Standard library
-only, so it runs anywhere ``uv run --no-project`` can find a Python.
+``uv sync``, ``bun install`` (if the frontend was kept), ``make check``, then
+``make build``, so a moved-in frontend is proven to build as well as pass its
+checks. Stops at the first step that fails. One script instead of six commands, so
+the skill needs a single permission rule for all of them.
+
+Ends with ``status.py``'s report of what's left to set up (tools, ``.env``,
+cloud resources), so the hand-over can print the checklist. That never fails
+the check. Standard library only, so it runs anywhere ``uv run --no-project``
+can find a Python.
 
 Usage::
 
@@ -21,6 +26,8 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+import status
 
 TAIL_LINES = 60
 
@@ -52,6 +59,7 @@ def plan_steps(dest: Path) -> list[tuple[str, list[str], Path]]:
     if (dest / "frontend").is_dir():
         steps.append(("bun install", ["bun", "install"], dest / "frontend"))
     steps.append(("make check", ["make", "check"], dest))
+    steps.append(("make build", ["make", "build"], dest))
     return steps
 
 
@@ -108,7 +116,11 @@ def main() -> int:
     :return: Process exit code
     """
     args = parse_args(sys.argv[1:])
-    summary = {"dest": str(args.dest.resolve()), **check(args.dest)}
+    summary = {
+        "dest": str(args.dest.resolve()),
+        **check(args.dest),
+        "status": status.report(args.dest),
+    }
     print(json.dumps(summary, indent=2))
     return 0 if summary["ok"] else 1
 

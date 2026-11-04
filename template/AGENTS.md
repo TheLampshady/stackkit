@@ -44,7 +44,7 @@ make deploy-agent-cr    # Sync + deploy to Cloud Run via adk deploy
 make sync-agents        # Copy shared GCP service files to agent_service/
 
 # Cloud Setup (run once per project, or when secrets change)
-bash gcp/bin/setup_iam.sh   # Grant IAM roles to App Engine SA (reads PROJECT_ID from .env)
+bash gcp/bin/setup_iam.sh   # Grant the server's service accounts their roles (reads PROJECT_ID from .env; needs Owner or Project IAM Admin)
 ```
 
 ## Architecture
@@ -82,8 +82,8 @@ All API routes go through `service/api/router.py` via `api_router` (prefix: `/ap
 
 ### Authentication
 Two options in `service/gcp_services/clients/`, both attach the caller to `request.state.user`
-and check the email domain against `settings.valid_domains` (`VALID_DOMAINS` env, default blank;
-blank disables the check and allows any domain):
+and check the email against `settings.valid_domains` (`VALID_DOMAINS` env: domains or full addresses,
+comma separated, default blank; blank disables the check and allows any account):
 
 - **Firebase Auth** (`fb_auth.py`): `@firebase_auth_required()` extracts the Bearer token,
   validates it with Firebase Auth, checks the domain, attaches a `user` dict.

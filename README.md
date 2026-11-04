@@ -2,14 +2,15 @@
 
 > Turn a plain-language idea into a working, slim web app — set up by Claude, from a short interview.
 
-A non-technical person describes what they want. The `bootstrap` skill asks a few plain questions, copies a runnable template, removes the parts the project doesn't need, fills in its name and settings, and runs the project's checks before handing it over. The new project has no link back to stackkit: it's theirs to change.
+A non-technical person describes what they want. The `bootstrap` skill asks a few plain questions, copies a runnable template, removes the parts the project doesn't need, fills in its name and settings, and runs the project's checks before handing it over. The new project has no link back to stackkit: it's theirs to change. Pointed at a folder that already holds a project, it reads that project to answer most of the questions, asks where the new one goes (a new folder, ideally, or the old folder itself, whose files move aside and whose history is kept), and moves as much of its code as will fit into stackkit's own folder layout (a Next.js app's React code comes across almost as it is), adapted so the new project's make commands run, build and check it. [`skills/create/moving.md`](skills/create/moving.md) says where each part goes, and which poor fits need the person's decision. Run in a project stackkit already made, it adds parts (a database, sign-in, AI, a web page) or features from a doc or another project, keeping the person's own changes.
 
 ## What's in here
 
 | Path | What it is |
 |------|------------|
 | `skills/bootstrap/` | The skill people start: the interview and its questions (`SKILL.md`), ending in a plan they confirm |
-| `skills/create/` | The skill `bootstrap` hands the plan to: the scripts that build the project (`scripts/bootstrap.py`) and check it runs (`scripts/check.py`). Hidden from the `/` menu. |
+| `skills/create/` | The skill `bootstrap` hands the plan to: the scripts that build or grow the project (`scripts/bootstrap.py`, `--add` for an existing one) and check it runs (`scripts/check.py`). Hidden from the `/` menu. |
+| `skills/status/` | Prints a project's checklist (tools to install, `.env` keys, cloud database and storage to create) and cost estimate. `create` ends with it; ask for "status" any time to refresh it. |
 | `template/` | The stack itself — a normal, runnable project with every module in (FastAPI, React, Firestore, Cloud Storage, IAP, Vertex AI, ADK agents, App Engine and Cloud Run). Copy it by hand any time. |
 | `template/stackkit.toml` | Which parts are optional, what each one touches, and the placeholder values the bootstrap replaces. Deleted from every new project. |
 | `docs/research/` | Research charter and findings behind the design |
@@ -42,7 +43,7 @@ Each answer keeps or removes a module, so the project is only as big as the brie
 | It uses AI: one job when asked / an assistant that acts | `ai` (Gemini/Claude on Vertex AI) / plus `agents` (ADK) |
 | None of the above, and nothing behind the scenes | no `api`: a static site |
 | Its own web address / Google's address | `gae` (App Engine) / `cloud_run` (Cloud Run) |
-| Always answers instantly (costs more) / a short wait after quiet spells | `always_on` (one instance kept running) / scale to zero |
+| Always ready (costs more) / cheapest, with a short wait after quiet spells (asked whenever there's a server) | `always_on` (one instance kept running) / scale to zero; both capped at 2 instances |
 
 Some modules are never asked about: `firebase` (the app and its local emulator) and `gcp` (the tooling folder) go once nothing kept needs them. `notebooks` is for developers.
 
@@ -67,7 +68,8 @@ A module can also `require` others (the bootstrap refuses a combination that can
 ```bash
 make help            # list targets
 make lint            # scripts and template must be ruff-clean as they stand
-make test-bootstrap  # lint, build sample projects into a temp dir, run `make check` in each
+make check-versions  # compare pinned Java/Node versions with what the latest Firebase CLI needs
+make test-bootstrap  # lint, build sample projects into a temp dir, run `make check` and `make build` in each
 make claude          # reinstall this repo as a local Claude plugin
 ```
 

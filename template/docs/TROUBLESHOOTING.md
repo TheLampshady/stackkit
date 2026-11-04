@@ -5,7 +5,7 @@
 | Symptom | Likely Cause | Quick Fix |
 |---------|--------------|-----------|
 | Port already in use | Previous process running | `lsof -i tcp:PORT && kill PID` |
-| Firebase emulator fails | Java not installed | `brew install java11` |
+| Firebase emulator fails | Java missing or too old | [Install Java](./ENVIRONMENTS.md#5-install-java-for-emulators) |
 | Can't access Firebase project | Auth expired | `firebase logout && firebase login` |
 | Tests fail with network error | Socket disabled | Add `@pytest.mark.enable_socket` |
 | Docker socket error | Docker config issue | Enable Docker socket in settings |
@@ -62,9 +62,9 @@ kill -9 <PID>
 **Symptom**: Emulator fails to start
 
 **Check**:
-1. Java 11+ is installed: `java -version`
+1. Java is new enough for the Firebase CLI: `java -version` (see [Install Java](./ENVIRONMENTS.md#5-install-java-for-emulators))
 2. Ports are free: 8060, 8070, 8071, 9199
-3. Firebase is logged in: `firebase login`
+3. The Firebase CLI runs: `firebase --version`
 
 ### Firebase Issues
 

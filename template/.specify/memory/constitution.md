@@ -861,7 +861,7 @@ The script reads `PROJECT_ID` from the root `.env` file and grants:
 | `roles/secretmanager.secretAccessor` | Read secrets at startup (`load_secrets()`) | Per-secret (each secret in the `SECRETS` array) |
 | `roles/iam.serviceAccountTokenCreator` | Sign GCS URLs for Storage operations | On the SA itself |
 
-Vertex AI (Gemini) calls need `roles/aiplatform.user` on the runtime service account. `setup_iam.sh` does not grant it; the App Engine default SA's project-level Editor role covers it unless that role has been removed. No API key is involved (see Service Pattern VI).
+Vertex AI (Gemini) calls need `roles/aiplatform.user` on the runtime service account; `setup_iam.sh` grants it, along with Firestore and Storage access, because newer projects no longer give default service accounts the Editor role. On Cloud Run it also grants `roles/run.builder` to the Compute Engine default account, which builds source deploys. No API key is involved (see Service Pattern VI).
 
 When adding a new secret: add it to both `SECRET_KEY_NAMES` in
 `gcp_secrets.py` **and** the `SECRETS` array in
@@ -903,7 +903,7 @@ domains in `gcp/cors.json` and re-apply.
 | `service/app.yaml`          | App Engine config: entrypoint, handlers, scaling   |
 | `service/api/config_app.py` | CORS middleware + static file / SPA routing setup  |
 | `service/api/router.py`     | API route definitions (prefix: `/api`)             |
-| `gcp/bin/setup_iam.sh`      | Grants IAM roles to App Engine SA (secrets + GCS)  |
+| `gcp/bin/setup_iam.sh`      | Grants IAM roles to the server's service accounts  |
 | `gcp/cors.json`             | GCS bucket CORS policy (apply via `gcloud`)        |
 
 **Rationale**: App Engine's static file handling and gunicorn worker model behave differently from uvicorn's development server. Routing and asset changes that work locally can silently break in production if `app.yaml` handlers are not updated in tandem. This principle ensures both environments stay in sync.

@@ -1,0 +1,64 @@
+# Examples for each interview question
+
+Short, everyday cases for each answer. Offer two or three of the closest when the person asks for an example, says "I'm not sure", or answers something that doesn't fit the choices, then ask the question again. Swap in details from their brief when you can ("like your order list").
+
+- **1. What it does, and who for**
+  - "A page where my bakery staff see today's orders and tick them off."
+  - "A sign-up form for our book club's monthly meetups."
+  - "A site with our restaurant's menu, hours and address."
+  - "A tool that reads customer emails and drafts a reply for me to check."
+- **2. Opened in a web browser**
+  - Yes: a menu site, a staff dashboard, a booking form, a chat page.
+  - No: the behind-the-scenes part of a phone app, or something only other software talks to, like a service a shop's till sends sales to.
+- **3. Remembers things between visits**
+  - Yes: orders and whether they're done, sign-ups from a form, a list of customers, comments people leave.
+  - No: a menu or price list you change by editing the site itself, a calculator that works things out on the spot.
+- **4. Uploads or keeps files**
+  - Yes: customers send photos of a damaged item, staff upload invoices as PDFs, members share a spreadsheet.
+  - No: the logo, photos and pictures that are part of the site's design; links to files kept somewhere else, like a shared drive.
+- **5. Who can open it**
+  - (a) Anyone, no sign-in: a menu, a landing page, a contact form, an event page.
+  - (b) Anyone, with a staff area: customers book a grooming slot and staff see the day's bookings; customers order for pickup and staff mark orders ready; people sign up for a class and the organiser sees the list.
+  - (c) Only your team: a staff rota, an internal stock list, a dashboard for the office.
+  - (d) Customers with their own accounts: an online shop where people see their past orders, a members' area, a booking site where people change or cancel their own bookings.
+- **5b. Outsiders**
+  - Yes: clients who preview the work, a contractor with a Gmail address, a partner's team.
+  - No: only staff who all have your company's email, or only people in your Google Workspace.
+- **5c. Who counts as staff**
+  - "@mariasbakery.com", if everyone's work email ends that way.
+  - "me and my sister: dana@gmail.com and jo@gmail.com", when they use personal addresses. More can be added later.
+- **5d. Sign-in already set up**
+  - Yes: "another app of ours already asks me to sign in with Google".
+  - No, or not sure: the default.
+- **6. Uses AI**
+  - Yes: write a summary of today's orders, draft replies to reviews, sort messages into "urgent" and "can wait", answer questions about your opening hours.
+  - No: showing and saving information, forms, lists, totals and simple sums.
+- **6b. One job, or an assistant**
+  - (a) One job when asked: "summarise this", "draft a reply to this email", "sort these messages", "turn these notes into a tidy list".
+  - (b) An assistant: a chat helper that answers customers' questions by looking up your products, or one that books an appointment by checking the calendar, asking follow-up questions and confirming.
+- **7. Behind the scenes**
+  - Yes: emails a receipt after an order, takes card payments, pulls in the weather or exchange rates, sends a reminder every Monday.
+  - No: pages people read, with links and pictures. Opening an email app with a "mailto" link counts as no.
+- **7b. Services with a key**
+  - Yes: Stripe or Square for card payments, SendGrid or Mailgun for email, a weather or exchange-rate service, Twilio for text messages.
+  - No: Claude or Gemini (no key needed, the project signs in itself), Google's own database and file storage (same), anything that needs no sign-up.
+  - If they name an AI service from another company (like OpenAI), say that Claude and Gemini are built in and need no key, and ask if one of those will do. If they still want it, add its key as a secret.
+- **8. Own web address**
+  - Own: orders.mariasbakery.com, bookclub.org, a name you'd print on a menu or business card.
+  - Google's: an address like bakery-orders-abc123.a.run.app, fine for a team tool or something only shared by link.
+- **8b. Word by word, or all at once**
+  - Word by word: a chat assistant whose reply appears as it's written, like typing; a progress bar on a long task.
+  - All at once: the reply shows up complete after a few seconds' pause, which is fine for summaries, drafts and most forms.
+- **9. Cheapest, or always ready**
+  - Cheapest: a staff tool used a few times a day, a sign-up form, anything where a few seconds' wait now and then won't matter.
+  - Always ready: a checkout people might give up on, a booking page shared at a busy event, a tool used in front of customers.
+  - The cap: "even if your post goes viral, it never runs more than two copies at once; it gets slower rather than more expensive".
+- **10. Name**
+  - "Bakery Orders", "Book Club Signups", "Menu Site". Two or three plain words; it can change later.
+- **11. Folder**
+  - "Here is fine", or a place they'll remember, like a "Projects" folder in their home folder.
+  - Moving a project: "a new folder next to it" if they want the old one left alone to compare; "turn this folder into it" if they want one folder to keep, with its history.
+- **12. Who puts it online**
+  - (a) Someone else: "our IT company", "my nephew who does websites", "a developer friend". "No problem, I'll write a note you can send them."
+  - (b) Me: they own the Google Cloud account and are happy to follow steps.
+  - (c) Not sure yet: the default when nobody's mentioned. The note is ready for whoever it turns out to be.

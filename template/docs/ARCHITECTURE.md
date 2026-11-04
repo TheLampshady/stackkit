@@ -144,8 +144,8 @@ from gcp_services.clients.gcp_services import db, bucket, auth_client
 ### Authentication
 
 Two interchangeable options live in `service/gcp_services/clients/`. Both check the
-email domain against `settings.valid_domains` (`VALID_DOMAINS` env, default
-blank, which allows any domain) and attach the caller to
+email against `settings.valid_domains` (`VALID_DOMAINS` env: domains or full
+addresses, default blank, which allows any account) and attach the caller to
 `request.state.user`.
 
 **Firebase Auth** (`fb_auth.py`) - the frontend signs in with Firebase and sends an

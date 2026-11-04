@@ -94,6 +94,8 @@ def is_allowed_domain(email: str, valid_domains: list[str]) -> bool:
     """
     Checks the email's domain against the allow list.
 
+    Entries are domains (``example.com``) or full addresses (``someone@gmail.com``),
+    so a few people on personal accounts can be let in one by one.
     An empty allow list means no domain restriction: any email with a domain
     is accepted. Set ``VALID_DOMAINS=`` (blank) to opt into this.
 
@@ -104,7 +106,7 @@ def is_allowed_domain(email: str, valid_domains: list[str]) -> bool:
     local, sep, domain = email.rpartition("@")
     if not (sep and local and domain):
         return False
-    return not valid_domains or domain in valid_domains
+    return not valid_domains or domain in valid_domains or email in valid_domains
 
 
 def audience_from_region_path(region_path: str, service: str) -> str | None:

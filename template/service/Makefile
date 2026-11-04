@@ -29,10 +29,17 @@ ACCESS_FLAGS := --no-allow-unauthenticated --iap
 # stackkit:end auth_iap
 # Scale to zero when idle: free, but the first visit after a quiet spell waits.
 # --cpu-boost below shortens that wait; it's billed only while an instance starts.
-SCALE_FLAGS := --min-instances=0
+# MAX_INSTANCES caps how many run at once, so a traffic spike can't run up the
+# bill (Cloud Run's own default is 100).
+# stackkit:begin gae
+# Keep it in step with max_instances in service/app.yaml.
+# stackkit:end gae
+MIN_INSTANCES := 0
 # stackkit:begin always_on
-SCALE_FLAGS := --min-instances=1
+MIN_INSTANCES := 1
 # stackkit:end always_on
+MAX_INSTANCES := 2
+SCALE_FLAGS := --min-instances=$(MIN_INSTANCES) --max-instances=$(MAX_INSTANCES)
 # stackkit:end cloud_run
 
 .PHONY: check-env
