@@ -108,4 +108,3 @@ Each `*_service/` folder deploys on its own, so each keeps a copy of the Google 
 | `template/` | The product: the runnable stack every project is copied from. Its own `AGENTS.md` covers working inside it. |
 | `dev/` | Helpers for `make test-bootstrap` (`check_docs.py`, `check_versions.py`) |
 | `docs/research/` | Research charter and findings behind the design |
-| `docs/reviews/` | Code reviews of branches, kept as a record |

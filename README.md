@@ -15,7 +15,6 @@ A non-technical person describes what they want. The `stackkit` skill asks a few
 | `template/stackkit.toml` | Which parts are optional, what each one touches, and the placeholder values the build script replaces. Deleted from every new project. |
 | `docs/HOW-IT-WORKS.md` | How the skills, scripts, manifest and tests fit together |
 | `docs/INTERVIEW.md` | The interview as a flow diagram: each question, what skips it, and what each answer keeps or removes |
-| `docs/reviews/` | Code reviews of branches, kept as a record |
 | `docs/research/` | Research charter and findings behind the design |
 
 ## Requirements
