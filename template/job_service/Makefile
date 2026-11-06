@@ -1,16 +1,8 @@
 -include ../.env
 export
 
-REGION ?= us-central1
 # Which job: a module in jobs/
 JOB ?= example
-# Cloud Run job names allow lowercase letters, digits and dashes
-JOB_ID = $(subst _,-,$(if $(NAMESPACE),$(NAMESPACE)-,)$(JOB))
-# When the timer runs it (cron, in TIME_ZONE): 6:00 every morning by default
-SCHEDULE ?= 0 6 * * *
-TIME_ZONE ?= Etc/UTC
-# How long one run may take before it's stopped (up to 24h)
-TASK_TIMEOUT ?= 60m
 
 # ------ SYNC & BUILD ------
 
@@ -21,62 +13,54 @@ sync:
 	@if [ -f ../shared/sync.sh ]; then ../shared/sync.sh; fi
 
 build: sync
-	uv export --frozen --package job-service --no-dev --no-hashes --format requirements-txt > requirements.txt
+	uv export --frozen --package job_service --no-dev --no-hashes --format requirements-txt > requirements.txt
 
-# ------ RUN ------
+# ------ RUN, DEPLOY, SCHEDULE ------
+# These call cli.py, which does the work (see Readme.md). Pass its flags in ARGS:
+#   make start-job JOB=nightly ARGS="--payload db=zach --wait"
+
+CLI = uv run --package job_service --group cli python cli.py
+# ALL=1 means every job instead of JOB
+TARGET = $(if $(ALL),--all,$(JOB))
 
 ## Run one job on this computer, against the emulator: make run JOB=example
 .PHONY: run
 run: sync
-	uv run --project .. python main.py $(JOB)
+	$(CLI) run $(JOB) --local $(ARGS)
 
-# ------ DEPLOY ------
-
-.PHONY: check-env
-check-env:
-	@test -n "$(PROJECT_ID)" || (echo "PROJECT_ID is not set in .env" && exit 1)
-
-## Put one job online (no Docker: Google builds it from this folder).
-## It doesn't run until it's started by hand (make start) or by a timer (make schedule).
+## Put jobs online (no Docker: Google builds the folder). They don't run yet.
 .PHONY: deploy
-deploy: check-env build
-	@gcloud run jobs deploy $(JOB_ID) \
-		--source=. \
-		--project=$(PROJECT_ID) \
-		--region=$(REGION) \
-		--tasks=1 \
-		--max-retries=1 \
-		--task-timeout=$(TASK_TIMEOUT) \
-		--set-env-vars=JOB_NAME=$(JOB)$(if $(NAMESPACE),$(comma)NAMESPACE=$(NAMESPACE),) \
-		--quiet
+deploy:
+	$(CLI) deploy $(TARGET) $(if $(TASK_TIMEOUT),--timeout $(TASK_TIMEOUT)) $(ARGS)
 
 ## Run the online job now, once
 .PHONY: start
-start: check-env
-	@gcloud run jobs execute $(JOB_ID) --project=$(PROJECT_ID) --region=$(REGION)
+start:
+	$(CLI) run $(JOB) --remote $(ARGS)
 
-## Run the online job on a timer (SCHEDULE, TIME_ZONE). Creates or updates it.
-## Google's timer starts the job as the Compute Engine default account, which
-## make -C gcp setup-iam lets do that.
+## Put a job on a timer. With SCHEDULE it sets one timer from SCHEDULE and
+## TIME_ZONE; without, it sets the ones in job_service.toml (ALL=1: every job's).
 .PHONY: schedule
-schedule: check-env
-	@number=$$(gcloud projects describe $(PROJECT_ID) --format='value(projectNumber)'); \
-	action=create; \
-	if gcloud scheduler jobs describe $(JOB_ID) --project=$(PROJECT_ID) --location=$(REGION) >/dev/null 2>&1; \
-		then action=update; fi; \
-	gcloud scheduler jobs $$action http $(JOB_ID) \
-		--project=$(PROJECT_ID) \
-		--location=$(REGION) \
-		--schedule="$(SCHEDULE)" \
-		--time-zone="$(TIME_ZONE)" \
-		--uri="https://run.googleapis.com/v2/projects/$(PROJECT_ID)/locations/$(REGION)/jobs/$(JOB_ID):run" \
-		--http-method=POST \
-		--oauth-service-account-email="$$number-compute@developer.gserviceaccount.com" \
-		--quiet
+schedule:
+	$(CLI) schedule $(TARGET) $(if $(SCHEDULE),--cron "$(SCHEDULE)") $(if $(TIME_ZONE),--tz $(TIME_ZONE)) $(ARGS)
 
-## List the job's recent runs, newest first
+## Take a job off its timer
+.PHONY: unschedule
+unschedule:
+	$(CLI) unschedule $(JOB) $(ARGS)
+
+## What's online and on a timer
+.PHONY: list
+list:
+	$(CLI) list $(ARGS)
+
+## Recent runs, newest first (ALL=1 for every job; ARGS="--active" for ones in progress)
 .PHONY: runs
-runs: check-env
-	@gcloud run jobs executions list --job=$(JOB_ID) --project=$(PROJECT_ID) --region=$(REGION)
+runs:
+	$(CLI) runs $(if $(ALL),,$(JOB)) $(ARGS)
 
-comma := ,
+## Any cli.py command: make cli ARGS="deploy --all"
+.PHONY: cli
+cli:
+	$(CLI) $(ARGS)
+

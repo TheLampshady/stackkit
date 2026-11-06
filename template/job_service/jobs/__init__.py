@@ -1,6 +1,8 @@
 """Background jobs: one module per job, each with a ``main()``. See main.py."""
 
+import json
 import os
+from typing import Any
 
 
 def task_share() -> tuple[int, int]:
@@ -15,3 +17,22 @@ def task_share() -> tuple[int, int]:
     index = int(os.environ.get("CLOUD_RUN_TASK_INDEX", "0"))
     count = int(os.environ.get("CLOUD_RUN_TASK_COUNT", "1"))
     return index, count
+
+
+def payload() -> dict[str, Any]:
+    """
+    The input this run was started with, such as ``{"db": "zach"}``.
+
+    ``cli.py run --payload db=zach``, a timer's ``payload`` and an API call all
+    set it. Locally, ``make run-job JOB=x ARGS="--payload db=zach"`` does too.
+
+    :return: The input, empty when the run was given none
+    :raises TypeError: If it isn't a JSON object
+    """
+    raw = os.environ.get("JOB_PAYLOAD", "")
+    if not raw:
+        return {}
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise TypeError("JOB_PAYLOAD must be a JSON object")
+    return data

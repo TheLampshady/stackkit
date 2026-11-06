@@ -218,7 +218,8 @@ check-agents: typecheck-agents test-agents
 # stackkit:begin jobs
 # ------ JOBS ------
 # Background work that runs, finishes and exits: make run-job JOB=example
-.PHONY: run-job deploy-job start-job schedule-job job-runs typecheck-jobs test-jobs check-jobs
+# Flags for job_service/cli.py go in ARGS: make start-job JOB=x ARGS="--payload db=zach"
+.PHONY: run-job deploy-job start-job schedule-job unschedule-job list-jobs job-runs typecheck-jobs test-jobs check-jobs
 run-job:
 	$(MAKE) -C $(JOBS_DIR) run
 
@@ -230,6 +231,12 @@ start-job:
 
 schedule-job:
 	$(MAKE) -C $(JOBS_DIR) schedule
+
+unschedule-job:
+	$(MAKE) -C $(JOBS_DIR) unschedule
+
+list-jobs:
+	$(MAKE) -C $(JOBS_DIR) list
 
 job-runs:
 	$(MAKE) -C $(JOBS_DIR) runs

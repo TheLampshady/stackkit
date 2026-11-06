@@ -87,7 +87,7 @@ requires = ["shared", "gcp"]
 self_contained = true
 paths = ["job_service"]
 workspace_member = "job_service"
-refs = ["job_service", "run-job", "deploy-job", "start-job", "schedule-job", "job-runs"]
+refs = ["job_service", "run-job", "deploy-job", "start-job", "schedule-job", "unschedule-job", "list-jobs", "job-runs"]
 
 [modules.notebooks]
 summary = "Jupyter notebooks for AI/ML experiments."
@@ -114,6 +114,8 @@ paths = [
     "gcp/bin/move_db.py",
     ".run/sync-db.run.xml",
     "notebooks/service_test.ipynb",
+    "job_service/jobs/summarize_file.py",
+    "job_service/tests/test_summarize_file_job.py",
 ]
 json_keys = { "gcp/firebase.json" = ["firestore", "emulators.firestore"] }
 refs = [
@@ -134,6 +136,8 @@ paths = [
     "shared/gcp_services/clients/gcp_storage.py",
     "gcp/storage.rules",
     "gcp/cors.json",
+    "job_service/jobs/summarize_file.py",
+    "job_service/tests/test_summarize_file_job.py",
 ]
 json_keys = { "gcp/firebase.json" = ["storage", "emulators.storage"] }
 refs = [
@@ -181,7 +185,12 @@ refs = ["fb_auth", "firebase_auth_required", "auth_client", "test_auth.py"]
 [modules.ai]
 summary = "One-off AI calls from the server or jobs (Gemini or Claude on Vertex AI)."
 requires_any = ["api", "jobs"]
-paths = ["shared/gcp_services/clients/gcp_vertex.py"]
+paths = [
+    "shared/gcp_services/clients/gcp_vertex.py",
+    "job_service/jobs/summarize_file.py",
+    "job_service/tests/test_summarize_file_job.py",
+    "job_service/tests/test_vertex_files.py",
+]
 refs = ["gcp_vertex", "default_text_model", "DEFAULT_TEXT_MODEL"]
 
 [modules.firebase]

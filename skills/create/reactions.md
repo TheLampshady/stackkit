@@ -27,13 +27,11 @@ initialize_app()
 
 
 @firestore_fn.on_document_created(document="orders/{order_id}", database="<NAMESPACE>")
-def on_new_order(event: firestore_fn.Event) -> None:
-    ...
+def on_new_order(event: firestore_fn.Event) -> None: ...
 
 
 @storage_fn.on_object_finalized(bucket="<PROJECT_ID>-<NAMESPACE>")
-def on_upload(event: storage_fn.CloudEvent) -> None:
-    ...
+def on_upload(event: storage_fn.CloudEvent) -> None: ...
 ```
 
 - **The database and bucket are the project's own**, named by `NAMESPACE` (the database) and `<PROJECT_ID>-<NAMESPACE>` (the bucket), not the defaults. Pass them as above. The Firebase CLI registers Firestore reactions with that database name, and the emulator accepts it (checked with firebase-tools 15.35 and firebase-functions 0.6).

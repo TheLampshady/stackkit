@@ -12,7 +12,7 @@ sync:
 	@if [ -f ../shared/sync.sh ]; then ../shared/sync.sh; fi
 
 build: sync
-	uv export --frozen --package api-service --no-dev --no-hashes --format requirements-txt > requirements.txt
+	uv export --frozen --package api_service --no-dev --no-hashes --format requirements-txt > requirements.txt
 
 # ------ RUN ------
 

@@ -7,3 +7,7 @@ __pycache__/
 tests/
 *.test.py
 .env
+# Developer tools, not needed to run a job
+cli.py
+commands/
+job_service.toml

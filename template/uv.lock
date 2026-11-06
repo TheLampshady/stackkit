@@ -1,10 +1,10 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.13.*"
 
 [manifest]
 members = [
-    "agents",
+    "agent-service",
     "api-service",
     "gcp",
     "job-service",
@@ -22,7 +22,7 @@ wheels = [
 ]
 
 [[package]]
-name = "agents"
+name = "agent-service"
 version = "0.1.0"
 source = { virtual = "agent_service" }
 dependencies = [
@@ -1582,6 +1582,9 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+cli = [
+    { name = "typer" },
+]
 test = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -1601,6 +1604,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+cli = [{ name = "typer", specifier = ">=0.27.3" }]
 test = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-asyncio", specifier = ">=1.4.0" },

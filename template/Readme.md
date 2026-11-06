@@ -85,7 +85,9 @@ Daily development commands. All commands use `make` targets defined in the root 
 | `make run-job JOB=<name>` | Run a job on this computer |
 | `make deploy-job JOB=<name>` | Put a job online as a Cloud Run job, built from source |
 | `make start-job JOB=<name>` | Run the online job once, now |
-| `make schedule-job JOB=<name>` | Run the online job on a timer (`SCHEDULE`, `TIME_ZONE`) |
+| `make schedule-job JOB=<name>` | Run the online job on a timer (`SCHEDULE`, `TIME_ZONE`, or the timers in `job_service/job_service.toml`) |
+| `make unschedule-job JOB=<name>` | Take the job off its timer |
+| `make list-jobs` | Which jobs are online and on a timer |
 | `make job-runs JOB=<name>` | List the job's recent runs |
 
 Every `-be` / `-fe` variant of the quality targets can be run on its own (`make lint-fe`, `make test-be`, …). Infrastructure targets — Firestore rules, indexes, bucket CORS, IAM, the `gcp` CLI — live in `gcp/Makefile`; see the [Cloud Guide](./docs/CLOUD.md).
@@ -106,7 +108,7 @@ The project uses a modern Python backend with Google Cloud services for auth, da
 | **AI/ML** | Vertex AI + Google ADK | Model inference and agent orchestration |
 | **Secrets** | Secret Manager | Secure credential storage |
 | **Deployment** | App Engine, Cloud Run, Agent Engine | Managed serverless hosting for the service and the agents |
-| **Packaging** | uv workspace | Python packages — `api-service`, `agents`, `gcp`, `notebooks` — under one lockfile |
+| **Packaging** | uv workspace | Python packages — `api_service`, `agent_service`, `gcp`, `notebooks` — under one lockfile |
 
 ---
 

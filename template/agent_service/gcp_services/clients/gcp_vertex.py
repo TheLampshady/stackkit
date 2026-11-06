@@ -12,11 +12,12 @@ token cap, and retry are constants here; the model id comes from
 """
 
 import asyncio
+import base64
 import json
 import logging
 import os
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -64,6 +65,14 @@ def is_claude(model_id: str) -> bool:
 
 class ModelError(Exception):
     """The model call did not produce a JSON reply: provider error, timeout, or bad text."""
+
+
+@dataclass(frozen=True)
+class FileInput:
+    """A file sent to the model with the prompt, such as a PDF, image or text file."""
+
+    data: bytes
+    mime_type: str
 
 
 @dataclass(frozen=True)
@@ -120,6 +129,7 @@ class VertexClient:
         schema: type[BaseModel],
         *,
         model: str | None = None,
+        files: Sequence[FileInput] = (),
     ) -> StructuredReply:
         """
         Calls the model and requires a JSON reply in the shape of ``schema``.
@@ -127,8 +137,11 @@ class VertexClient:
         :param prompt: The rendered prompt.
         :param schema: Pydantic class used as the response schema and to parse the reply.
         :param model: Model id; defaults to ``settings.default_text_model``.
+        :param files: Files the prompt is about. Gemini reads PDFs, images, audio,
+            video and text; Claude reads PDFs, images and text.
         :return: The reply with token counts and latency.
-        :raises ModelError: Provider error, timeout, empty or non-JSON text.
+        :raises ModelError: Provider error, timeout, empty or non-JSON text, or a
+            file Claude can't read.
         :side effects: One model call, two when the first times out or finds the
             model busy; one log line.
         """
@@ -136,11 +149,11 @@ class VertexClient:
         started = time.perf_counter()
         if is_claude(model_id):
             text, input_tokens, output_tokens = await self._claude_text(
-                model_id, prompt, schema
+                model_id, prompt, schema, files
             )
         else:
             text, input_tokens, output_tokens = await self._gemini_text(
-                model_id, prompt, schema
+                model_id, prompt, schema, files
             )
         latency_ms = int((time.perf_counter() - started) * 1000)
         if not text:
@@ -173,7 +186,11 @@ class VertexClient:
         )
 
     async def _gemini_text(
-        self, model_id: str, prompt: str, schema: type[BaseModel]
+        self,
+        model_id: str,
+        prompt: str,
+        schema: type[BaseModel],
+        files: Sequence[FileInput] = (),
     ) -> tuple[str | None, int, int]:
         """
         Calls Gemini with the schema as its response schema.
@@ -181,6 +198,7 @@ class VertexClient:
         :param model_id: Model id.
         :param prompt: The rendered prompt.
         :param schema: Pydantic class used as the response schema.
+        :param files: Files sent ahead of the prompt.
         :return: ``(text, input_tokens, output_tokens)``; thinking counts as output.
         :raises ModelError: Any provider error or timeout, after the retry.
         :side effects: One or two model calls.
@@ -191,10 +209,19 @@ class VertexClient:
             temperature=TEMPERATURE,
             http_options=types.HttpOptions(timeout=TIMEOUT_MS),
         )
+        contents: Any = prompt
+        if files:
+            contents = [
+                *(
+                    types.Part.from_bytes(data=f.data, mime_type=f.mime_type)
+                    for f in files
+                ),
+                prompt,
+            ]
         response: types.GenerateContentResponse = await self._call(
             model_id,
             lambda: self.client.aio.models.generate_content(
-                model=model_id, contents=prompt, config=config
+                model=model_id, contents=contents, config=config
             ),
         )
         usage = response.usage_metadata
@@ -207,7 +234,11 @@ class VertexClient:
         return response.text, input_tokens, output_tokens
 
     async def _claude_text(
-        self, model_id: str, prompt: str, schema: type[BaseModel]
+        self,
+        model_id: str,
+        prompt: str,
+        schema: type[BaseModel],
+        files: Sequence[FileInput] = (),
     ) -> tuple[str | None, int, int]:
         """
         Calls Claude with the schema as its structured output format.
@@ -217,20 +248,28 @@ class VertexClient:
         :param model_id: Model id.
         :param prompt: The rendered prompt.
         :param schema: Pydantic class converted to Claude's JSON schema subset.
+        :param files: Files sent ahead of the prompt: PDFs, images or text.
         :return: ``(text, input_tokens, output_tokens)``.
         :raises ModelError: Any provider error or timeout after the retry, a
-            refusal, or a reply cut off at ``CLAUDE_MAX_TOKENS``.
+            refusal, a reply cut off at ``CLAUDE_MAX_TOKENS``, or a file type
+            Claude can't read.
         :side effects: One or two model calls.
         """
         output_config: OutputConfigParam = {
             "format": {"type": "json_schema", "schema": transform_schema(schema)}
         }
+        content: Any = prompt
+        if files:
+            content = [
+                *(_claude_file_block(f) for f in files),
+                {"type": "text", "text": prompt},
+            ]
         response: Message = await self._call(
             model_id,
             lambda: self.claude.messages.create(
                 model=model_id,
                 max_tokens=CLAUDE_MAX_TOKENS,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "user", "content": content}],
                 output_config=output_config,
             ),
         )
@@ -272,6 +311,30 @@ class VertexClient:
             logger.warning("model=%s retrying after %s", model_id, reason)
             await asyncio.sleep(RETRY_DELAY_S)
         raise AssertionError("unreachable")
+
+
+def _claude_file_block(file: FileInput) -> dict[str, Any]:
+    """
+    Turns a file into the content block Claude takes for its type.
+
+    :param file: The file.
+    :return: A ``document``, ``image`` or ``text`` content block.
+    :raises ModelError: If Claude can't read the file's type.
+    """
+    kind = file.mime_type.split(";")[0].strip().lower()
+    if kind.startswith("text/"):
+        return {"type": "text", "text": file.data.decode("utf-8", errors="replace")}
+    if kind == "application/pdf" or kind.startswith("image/"):
+        source = {
+            "type": "base64",
+            "media_type": kind,
+            "data": base64.standard_b64encode(file.data).decode("ascii"),
+        }
+        return {
+            "type": "document" if kind == "application/pdf" else "image",
+            "source": source,
+        }
+    raise ModelError(f"Claude can't read {kind} files; use a Gemini model for it")
 
 
 def _failure(exc: Exception) -> tuple[int | None, bool]:

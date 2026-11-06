@@ -1,5 +1,5 @@
 [project]
-name = "job-service"
+name = "job_service"
 version = "0.1.0"
 description = "stackkit-app background jobs (Cloud Run jobs)"
 requires-python = "==3.13.*"
@@ -21,6 +21,10 @@ dependencies = [
 ]
 
 [dependency-groups]
+# The jobs CLI (cli.py): a developer tool, so it isn't deployed with the jobs
+cli = [
+    "typer>=0.27.3",
+]
 test = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",

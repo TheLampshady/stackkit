@@ -6,7 +6,7 @@ REGION ?= us-central1
 
 .PHONY: build
 build: sync
-	uv export --frozen --package agents --no-dev --no-hashes --format requirements-txt > requirements.txt
+	uv export --frozen --package agent_service --no-dev --no-hashes --format requirements-txt > requirements.txt
 
 
 # ------ SYNC ------
