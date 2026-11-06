@@ -4,15 +4,10 @@ export
 # Which job: a module in jobs/
 JOB ?= example
 
-# ------ SYNC & BUILD ------
+# ------ BUILD ------
 
-.PHONY: sync build
-# Refresh this folder's copy of shared/gcp_services/. Projects made before
-# shared/ existed have none, and keep their copies by hand.
-sync:
-	@if [ -f ../shared/sync.sh ]; then ../shared/sync.sh; fi
-
-build: sync
+.PHONY: build
+build:
 	uv export --frozen --package job_service --no-dev --no-hashes --format requirements-txt > requirements.txt
 
 # ------ RUN, DEPLOY, SCHEDULE ------
@@ -25,7 +20,7 @@ TARGET = $(if $(ALL),--all,$(JOB))
 
 ## Run one job on this computer, against the emulator: make run JOB=example
 .PHONY: run
-run: sync
+run:
 	$(CLI) run $(JOB) --local $(ARGS)
 
 ## Put jobs online (no Docker: Google builds the folder). They don't run yet.

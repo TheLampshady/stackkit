@@ -11,6 +11,7 @@ A non-technical person describes what they want. The `stackkit` skill asks a few
 | `skills/stackkit/` | The skill people start: the interview and its questions (`SKILL.md`), ending in a plan they confirm |
 | `skills/create/` | The skill `stackkit` hands the plan to: the scripts that build or grow the project (`scripts/bootstrap.py`, `--add` for an existing one) and check it runs (`scripts/check.py`). Hidden from the `/` menu. |
 | `skills/status/` | Prints a project's checklist (tools to install, `.env` keys, cloud database and storage to create) and cost estimate. `create` ends with it; ask for "status" any time to refresh it. |
+| `shared/gcp_services/` | The one source for the Google clients and settings each `template/*_service/` keeps a copy of. `make sync` copies it in. Never part of a project. |
 | `template/` | The stack itself — a normal, runnable project with every module in (FastAPI, React, Firestore, Cloud Storage, IAP, Vertex AI, ADK agents, App Engine and Cloud Run). Copy it by hand any time. |
 | `template/stackkit.toml` | Which parts are optional, what each one touches, and the placeholder values the build script replaces. Deleted from every new project. |
 | `docs/HOW-IT-WORKS.md` | How the skills, scripts, manifest and tests fit together |
@@ -49,7 +50,7 @@ Each answer keeps or removes a module, so the project is only as big as the brie
 | Its own web address / Google's address | `gae` (App Engine) / `cloud_run` (Cloud Run) |
 | Always ready (costs more) / cheapest, with a short wait after quiet spells (asked whenever there's a server) | `always_on` (one instance kept running) / scale to zero; both capped at 2 instances |
 
-The name, the folder and when a timer runs aren't asked for a new project: they're assumed and shown in the confirmation, where they can be changed. Some modules are never asked about: `firebase` (the app and its local emulator), `shared` (the Google clients every server folder copies) and `gcp` (the tooling folder) go once nothing kept needs them. `notebooks` is for developers.
+The name, the folder and when a timer runs aren't asked for a new project: they're assumed and shown in the confirmation, where they can be changed. Some modules are never asked about: `firebase` (the app and its local emulator), `iam` (the script that grants the service accounts their roles) and `gcp` (the tooling folder) go once nothing kept needs them. `notebooks` is for developers.
 
 ## How optional parts are removed
 
@@ -73,6 +74,7 @@ A module can also `require` others (the build script refuses a combination that 
 make help            # list targets
 make lint            # scripts and template must be ruff-clean as they stand
 make check-versions  # compare pinned Java/Node versions with what the latest Firebase CLI needs
+make sync            # copy shared/gcp_services/ into each template/*_service/
 make test-bootstrap  # lint, build sample projects into a temp dir, run `make check` and `make build` in each
 make claude          # reinstall this repo as a local Claude plugin
 ```

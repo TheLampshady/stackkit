@@ -90,7 +90,7 @@ Create `.env` from sample:
 cp .env.sample .env
 ```
 
-All of these are read in `shared/gcp_services/base_settings.py`, which each service's `app_settings.py` builds on (`FRONT_END_URL` is only in `api_service/app_settings.py`).
+All of these are read in `gcp_services/base_settings.py`, which each service's `app_settings.py` builds on (`FRONT_END_URL` is only in `api_service/app_settings.py`).
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|

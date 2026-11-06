@@ -3,7 +3,8 @@ Settings every service shares.
 
 Each service's ``app_settings.py`` loads its environment with
 ``load_environment`` and subclasses ``CoreSettings`` to add what only that
-service needs. Edit this file for anything common; run ``make sync`` after.
+service needs. Each service has its own copy of ``gcp_services/``, so a change
+every service needs goes in each copy.
 
 Loads settings from
  - `.env` for local instances

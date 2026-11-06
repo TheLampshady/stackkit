@@ -13,8 +13,8 @@ builds each job from this folder.
 | `main.py` | Runs one job by name (`python main.py example`) and exits. Google runs it too, with `JOB_NAME` saying which job. |
 | `job_service.toml` | **How each job is put online:** timeout, retries, CPU, memory, and its timers with their inputs. Only `cli.py` reads it. Ships with two jobs: `example` on a timer and `backfill` with none. |
 | `cli.py`, `commands/` | The command line for deploying, running and scheduling jobs. Run `make cli ARGS="--help"`. |
-| `app_settings.py` | What the job's code reads at run time (project, secrets). Shared with the other services through `gcp_services/`. |
-| `gcp_services/` | A copy of `../shared/gcp_services/` (database, storage, AI clients). Never edit it here; edit `shared/` and run `make sync`. |
+| `app_settings.py` | What the job's code reads at run time (project, secrets), built on `gcp_services/base_settings.py`. |
+| `gcp_services/` | This folder's own copy of the Google clients (database, storage, AI) and the settings every service has. Another service's copy is separate: a fix both need goes in each. |
 | `Makefile` | Short `make` commands that call `cli.py`. |
 | `Procfile` | Tells Google's build how to start the job (`python main.py`). |
 | `pyproject.toml` | This folder's Python packages. |

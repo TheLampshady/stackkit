@@ -40,13 +40,12 @@ The SPA is built into `api_service/static/` at deploy time, so in production the
 |-----------|---------|
 | `api_service/` | FastAPI backend (entry: `app.py`) |
 | `api_service/api/` | API routes (`router.py`) and app wiring (`config_app.py`) |
-| `shared/gcp_services/` | GCP/Firebase service integrations, the one to edit (see Service Boundaries) |
-| `shared/gcp_services/clients/` | Pre-configured Firebase clients |
-| `api_service/gcp_services/` | Copy of `shared/gcp_services/` |
+| `*_service/gcp_services/` | Each service's own copy of the GCP/Firebase integrations and settings (see Service Boundaries) |
+| `*_service/gcp_services/clients/` | Pre-configured Firebase clients |
 | `api_service/tests/` | pytest test suite for the service |
 | `agent_service/` | Self-contained ADK deploy unit — own settings, own `gcp_services/` |
 | `agent_service/agents/` | Google ADK agent definitions |
-| `agent_service/gcp_services/` | Copy of `shared/gcp_services/` |
+| `agent_service/gcp_services/` | The agents' own copy of the GCP/Firebase integrations |
 | `agent_service/tests/` | pytest test suite for the agents |
 | `job_service/` | Background jobs deploy unit (Cloud Run jobs): `main.py` runs one module from `jobs/` |
 | `frontend/` | React 19 SPA (Vite, Tailwind v4, shadcn/ui) |
@@ -55,9 +54,7 @@ The SPA is built into `api_service/static/` at deploy time, so in production the
 
 ### Service Boundaries
 
-Each `*_service/` folder is a separate uv workspace package that deploys independently: the server to App Engine or Cloud Run, the agents to Agent Engine or Cloud Run, background jobs to Cloud Run jobs. They share GCP integration code by **copy, not import**: `shared/gcp_services/` is the one to edit, and `shared/sync.sh` (`make sync`) copies it into every `*_service/gcp_services/`. The make targets that run, test, build or deploy a service sync first, so a copy is never stale.
-
-The copy exists because each package deploys from its own directory and installs its own dependency set; App Engine, Cloud Run and Agent Engine upload only that directory. The sync copies a shared file over any copy that differs, unless the copy was edited by hand: newer than the shared file and, in a git repo, changed since the last commit. That copy is never overwritten: the sync fails and names the file, so the change can be moved to `shared/gcp_services/`. A copy that is committed and unchanged is safe to overwrite, so a `git pull` or checkout that makes a copy newer doesn't stop the sync.
+Each `*_service/` folder is a separate uv workspace package that deploys independently: the server to App Engine or Cloud Run, the agents to Agent Engine or Cloud Run, background jobs to Cloud Run jobs. Each has its own copy of the GCP integration code in `gcp_services/`: they share it by **copy, not import**, because each package deploys from its own directory and installs its own dependency set; App Engine, Cloud Run and Agent Engine upload only that directory. Each copy belongs to its service. A change every service needs, such as a fix in `fb_auth.py`, goes in each copy.
 
 ## Data Model
 
@@ -113,10 +110,10 @@ sequenceDiagram
 
 | Module | Purpose | Location |
 |--------|---------|----------|
-| `gcp_services` | Firebase client factory | `shared/gcp_services/clients/gcp_services.py` |
+| `gcp_services` | Firebase client factory | `gcp_services/clients/gcp_services.py` |
 | `app_settings` | Dual-mode configuration | `api_service/app_settings.py` |
-| `fb_auth` | Firebase Auth decorator and validation | `shared/gcp_services/clients/fb_auth.py` |
-| `iap_auth` | IAP identity decorator and middleware | `shared/gcp_services/clients/iap_auth.py` |
+| `fb_auth` | Firebase Auth decorator and validation | `gcp_services/clients/fb_auth.py` |
+| `iap_auth` | IAP identity decorator and middleware | `gcp_services/clients/iap_auth.py` |
 | `config_app` | CORS, static mount, SPA fallback, warmup route | `api_service/api/config_app.py` |
 | `router` | API routes (prefix `/api`) | `api_service/api/router.py` |
 | `agents` | ADK agent definitions | `agent_service/agents/` |
@@ -137,7 +134,7 @@ from gcp_services.clients.gcp_services import db, bucket, auth_client
 
 ### Dual-Mode Configuration
 
-Each service's `app_settings.py` adds its own fields to the shared `CoreSettings` (`shared/gcp_services/base_settings.py`), which handles environment detection:
+Each service's `app_settings.py` adds its own fields to `CoreSettings` (`gcp_services/base_settings.py`, in each service's copy), which handles environment detection:
 
 - **Local**: Uses emulators when `USE_EMULATOR=true` in `.env`
 - **Cloud**: Auto-detects GCP via `K_SERVICE` or `GAE_INSTANCE` env vars
@@ -145,7 +142,7 @@ Each service's `app_settings.py` adds its own fields to the shared `CoreSettings
 
 ### Authentication
 
-Two interchangeable options live in `shared/gcp_services/clients/`. Both check the
+Two interchangeable options live in `gcp_services/clients/`. Both check the
 email against `settings.valid_domains` (`VALID_DOMAINS` env: domains or full
 addresses, default blank, which allows any account) and attach the caller to
 `request.state.user`.

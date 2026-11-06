@@ -62,7 +62,7 @@ def deploy(
     require_project(state)
     names = pick_jobs(job, all_jobs)
 
-    # Copies the shared clients in and writes requirements.txt
+    # Writes requirements.txt
     build = ["make", "-C", str(JOB_DIR), "build"]
     typer.echo("+ " + " ".join(build))
     if not dry_run and subprocess.run(build, check=False).returncode != 0:

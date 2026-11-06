@@ -13,6 +13,10 @@
 # A `self_contained` module's paths are skipped when checking other modules'
 # refs.
 #
+# A path starting `gcp_services/` names that file in every service's copy
+# (`api_service/gcp_services/...`, `job_service/gcp_services/...`): each
+# service keeps its own copy of the Google clients.
+#
 # `only_without` lists files that only matter once the module is removed (a
 # fallback it replaces); they're deleted when the module is kept.
 #
@@ -42,7 +46,7 @@ keys = ["PROJECT_ID", "NAMESPACE", "VALID_DOMAINS"]
 [modules.api]
 summary = "The backend (FastAPI). Without it the project is a static site."
 # gcp/bin/setup_iam.sh grants the server's accounts their roles
-requires = ["gcp", "shared"]
+requires = ["gcp", "iam"]
 paths = [
     "api_service",
     ".run/Service.run.xml",
@@ -71,7 +75,7 @@ refs = ["frontend/", "bun ", "Vite", "run-fe", "build-fe"]
 
 [modules.agents]
 summary = "AI agents that run on their own (Google ADK), deployed separately. Their prompts live in the database."
-requires = ["ai", "database", "shared"]
+requires = ["ai", "database", "iam"]
 # Deploys on its own with its own copies of the shared clients, so other
 # modules' refs aren't checked inside it.
 self_contained = true
@@ -81,7 +85,7 @@ refs = ["agent_service", "adk-web", "adk-api", "deploy-agent"]
 
 [modules.jobs]
 summary = "Background work that runs, finishes and exits, by hand or on a timer (Cloud Run jobs). No Docker."
-requires = ["shared", "gcp"]
+requires = ["iam", "gcp"]
 # Deploys on its own with its own copy of the shared clients, so other
 # modules' refs aren't checked inside it.
 self_contained = true
@@ -133,7 +137,7 @@ summary = "Keeps uploaded files such as photos and PDFs (Cloud Storage)."
 requires = ["firebase"]
 requires_any = ["api", "jobs"]
 paths = [
-    "shared/gcp_services/clients/gcp_storage.py",
+    "gcp_services/clients/gcp_storage.py",
     "gcp/storage.rules",
     "gcp/cors.json",
     "job_service/jobs/summarize_file.py",
@@ -155,7 +159,7 @@ refs = [
 [modules.auth_iap]
 summary = "Team-only access: Google's Identity-Aware Proxy in front of the whole app."
 paths = [
-    "shared/gcp_services/clients/iap_auth.py",
+    "gcp_services/clients/iap_auth.py",
     "api_service/tests/test_iap_auth.py",
     "gcp/bin/setup_iap.sh",
 ]
@@ -176,7 +180,7 @@ refs = [
 summary = "Accounts people sign up for (Firebase Auth). The server side only; login screens are built on top."
 requires = ["api", "firebase"]
 paths = [
-    "shared/gcp_services/clients/fb_auth.py",
+    "gcp_services/clients/fb_auth.py",
     "gcp/bin/test_auth.py",
 ]
 json_keys = { "gcp/firebase.json" = ["emulators.auth"] }
@@ -186,7 +190,7 @@ refs = ["fb_auth", "firebase_auth_required", "auth_client", "test_auth.py"]
 summary = "One-off AI calls from the server or jobs (Gemini or Claude on Vertex AI)."
 requires_any = ["api", "jobs"]
 paths = [
-    "shared/gcp_services/clients/gcp_vertex.py",
+    "gcp_services/clients/gcp_vertex.py",
     "job_service/jobs/summarize_file.py",
     "job_service/tests/test_summarize_file_job.py",
     "job_service/tests/test_vertex_files.py",
@@ -198,8 +202,8 @@ summary = "The Firebase app and its local emulator, shared by database, storage 
 implicit = true
 requires = ["gcp"]
 paths = [
-    "shared/gcp_services/clients/gcp_services.py",
-    "shared/gcp_services/clients/fb_config.py",
+    "gcp_services/clients/gcp_services.py",
+    "gcp_services/clients/fb_config.py",
     "gcp/firebase.json",
     "gcp/.firebaserc",
     "gcp/.gitignore",
@@ -252,14 +256,11 @@ summary = "Keeps one server instance running so visits never wait for a start. B
 requires = ["api"]
 refs = ["min_instances", "MIN_INSTANCES := 1"]
 
-[modules.shared]
-summary = "The Google clients each server folder keeps a copy of, and the sync that keeps the copies current."
+[modules.iam]
+summary = "The script that grants every backend's service accounts their roles (setup-iam)."
 implicit = true
-# Paths under shared/ name every service's copy too: removing
-# shared/gcp_services/x.py also removes api_service/gcp_services/x.py.
-# setup_iam.sh grants every backend's accounts their roles
-paths = ["shared", "gcp/bin/setup_iam.sh"]
-refs = ["shared/", "sync.sh", "setup-iam", "setup_iam"]
+paths = ["gcp/bin/setup_iam.sh"]
+refs = ["setup-iam", "setup_iam"]
 
 [modules.gcp]
 summary = "The gcp/ tooling folder: emulator, provisioning, service account roles (setup-iam) and App Engine helpers."

@@ -1,8 +1,8 @@
 """
 Configures settings for agent service.
 
-The settings every service shares are in `gcp_services/base_settings.py`
-(edit `shared/gcp_services/base_settings.py`). Add what only the agents need.
+The settings every service has are in `gcp_services/base_settings.py`.
+Add what only the agents need.
 
 Loads settings from
  - `.env` for local instances

@@ -22,11 +22,11 @@ cors:
 	gcloud storage buckets update gs://$(or ${FIRESTORE_BUCKET_NAME},${PROJECT_ID}-${NAMESPACE}) --cors-file=cors.json --project=${PROJECT_ID}
 # stackkit:end storage
 
-# stackkit:begin shared
+# stackkit:begin iam
 # Grant the server's and jobs' service accounts their roles. Needs Owner or Project IAM Admin.
 setup-iam:
 	@bin/setup_iam.sh
-# stackkit:end shared
+# stackkit:end iam
 
 # stackkit:begin auth_iap
 # ------ IAP FIRST-TIME SETUP ------

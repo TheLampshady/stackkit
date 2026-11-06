@@ -65,7 +65,6 @@ Daily development commands. All commands use `make` targets defined in the root 
 | `make typecheck` | `ty` on `api_service/` and `agent_service/`, `tsc -b` on the frontend |
 | `make test` | pytest for `api_service/` and `agent_service/`, Vitest for the frontend |
 | `make hooks` | Run pre-commit across all files |
-| `make sync` | Copy `shared/gcp_services/` into each `*_service/` (run, test, build and deploy do it first) |
 | `make build` | Build the frontend and copy `frontend/dist/` into `api_service/static/` |
 | `make deploy-app` | Build, then deploy the service to App Engine |
 | `make deploy-cr` | Build, then deploy the service to Cloud Run |
@@ -122,7 +121,6 @@ The repo is a uv workspace: `api_service/`, `agent_service/`, `gcp/` and `notebo
 |--------|---------|
 | `api_service/` | **Main application** — FastAPI backend (entry: `app.py`), API routes, GCP clients, tests |
 | `api_service/api/` | Route definitions (`router.py`) and app wiring — CORS, static mount, SPA fallback (`config_app.py`) |
-| `shared/gcp_services/` | **Shared code** for GCP/Firebase integrations: edit it here; every `*_service/` keeps a copy, refreshed by `make sync` |
 | `agent_service/` | **Agents deploy unit** — self-contained ADK agents with their own settings and GCP services |
 | `agent_service/agents/` | Google ADK agent definitions (each agent has `agent.py` + `prompt.py`) |
 | `job_service/` | **Background jobs** — Cloud Run jobs, one module per job in `jobs/`, with their own settings and GCP services |

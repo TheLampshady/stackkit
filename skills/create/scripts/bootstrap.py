@@ -67,8 +67,6 @@ SKIP_FILES = {".env"}
 CARRY_SKIP_DIRS = SKIP_DIRS - {"dist", "static"} | {".mypy_cache", ".next"}
 CARRY_SKIP_RE = re.compile(r"^\.env(\..*)?$")
 OLD_SUFFIX = "-before-stackkit"
-# Code every service keeps a copy of; each copy sits at the same path in it
-SHARED = "shared"
 MARKER_RE = re.compile(r"stackkit:(begin|end) ([a-z_,]+)")
 
 
@@ -346,19 +344,15 @@ def carry_over(dest: Path, copies: list[tuple[Path, Path]]) -> None:
 def remove_paths(dest: Path, module: dict) -> None:
     """Delete a module's folders and files.
 
-    A path under ``shared/`` goes from every service's copy of it too
-    (``api_service/gcp_services/...`` for ``shared/gcp_services/...``).
+    A ``gcp_services/`` path goes from every service's copy
+    (``api_service/gcp_services/...``, ``job_service/gcp_services/...``).
 
     :param dest: Project root
     :param module: The module's manifest entry
     :side effects: Deletes files under ``dest``
     """
     for rel in module.get("paths", []):
-        targets = [dest / rel]
-        if rel.startswith(SHARED + "/"):
-            inner = rel.removeprefix(SHARED + "/")
-            targets += [d / inner for d in dest.glob("*_service") if d.is_dir()]
-        for target in targets:
+        for target in status.manifest_paths(dest, rel):
             if target.is_dir():
                 shutil.rmtree(target)
             elif target.exists():
@@ -784,6 +778,39 @@ def add_env_keys(dest: Path, sample: Path, env: dict[str, str]) -> list[str]:
     return added
 
 
+def copy_clients(dest: Path, gained: list[str]) -> dict[str, str]:
+    """Give each new service the project's own copy of the Google clients.
+
+    Each service keeps its own ``gcp_services/``, and the person may have
+    changed theirs. A new service starts from the server's copy (or another
+    service's), over the template's, so it has their changes; files only the
+    template has, such as a part just added, stay.
+
+    :param dest: Project root
+    :param gained: Folders of the services just added, such as ``job_service``
+    :return: Each new service, and the service its clients came from
+    :side effects: Overwrites files in each new service's ``gcp_services/``
+    """
+    sources = [
+        c
+        for c in status.service_copies(dest, status.COPIES)
+        if c.is_dir() and c.parent.name not in gained
+    ]
+    # The server's copy first, under either of its names
+    server = ("api_service", *status.RENAMED.values())
+    sources.sort(key=lambda c: c.parent.name not in server)
+    if not sources:
+        return {}
+    source = sources[0]
+    for name in gained:
+        for file in source.rglob("*"):
+            if file.is_file() and "__pycache__" not in file.parts:
+                target = dest / name / status.COPIES / file.relative_to(source)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(file, target)
+    return {name: source.parent.name for name in gained}
+
+
 def use_old_names(tree: Path, legacy: dict[str, str]) -> None:
     """Rewrite a rendered template into a project's pre-rename layout.
 
@@ -865,6 +892,7 @@ def add_modules(args: argparse.Namespace) -> dict:
         "merged": [],
         "removed_files": [],
         "conflicts": [],
+        "clients_from": {},
     }
     with tempfile.TemporaryDirectory() as tmp:
         base, after = Path(tmp) / "base", Path(tmp) / "after"
@@ -873,11 +901,6 @@ def add_modules(args: argparse.Namespace) -> dict:
         if legacy:
             use_old_names(base, legacy)
             use_old_names(after, legacy)
-        # A project made before shared/ keeps its clients in each service only
-        for folder in status.ADDED_LATER:
-            if status.predates(dest, folder):
-                shutil.rmtree(base / folder, ignore_errors=True)
-                shutil.rmtree(after / folder, ignore_errors=True)
         # A project made before the shared settings keeps its own app_settings.py:
         # leave it alone and report what the added modules put in the shared ones
         for shared in sorted(base.glob("*/gcp_services/base_settings.py")):
@@ -902,6 +925,12 @@ def add_modules(args: argparse.Namespace) -> dict:
             for stale in (rel, settings_rel):
                 (base / stale).unlink(missing_ok=True)
                 (after / stale).unlink(missing_ok=True)
+        # Services the project gains, which take their Google clients from it
+        gained = [
+            d.name
+            for d in sorted(after.iterdir())
+            if (d / status.COPIES).is_dir() and not (dest / d.name).exists()
+        ]
         before_files = {p.relative_to(base) for p in base.rglob("*") if p.is_file()}
         after_files = {p.relative_to(after) for p in after.rglob("*") if p.is_file()}
 
@@ -957,6 +986,7 @@ def add_modules(args: argparse.Namespace) -> dict:
                         "reason": "no longer used, but the project changed it; delete it once its changes are moved",
                     }
                 )
+        summary["clients_from"] = copy_clients(dest, gained)
         summary["env_added"] = add_env_keys(dest, after / ".env.sample", env)
     carry_over(dest, copies)
     summary["carried"] = [str(rel) for _, rel in copies]

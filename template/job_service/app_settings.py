@@ -1,8 +1,8 @@
 """
 Configures settings for the background jobs.
 
-The settings every service shares are in `gcp_services/base_settings.py`
-(edit `shared/gcp_services/base_settings.py`). Add what only the jobs need.
+The settings every service has are in `gcp_services/base_settings.py`.
+Add what only the jobs need.
 
 Loads settings from
  - `.env` for local instances

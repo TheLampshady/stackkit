@@ -74,9 +74,8 @@ SETUP_IAM = "make -C gcp setup-iam"
 # the rename still have. Every path the manifest names goes through
 # ``project_path``, so both layouts are read the same way.
 RENAMED = {"api_service": "service"}
-# Folders added later. Projects made before one keep its files in a server
-# folder instead, at the same path inside it.
-ADDED_LATER = {"shared": ("api_service", "service")}
+# A manifest path starting with this names that file in every service's copy
+COPIES = "gcp_services"
 
 
 def legacy_dirs(dest: Path) -> dict[str, str]:
@@ -92,34 +91,40 @@ def legacy_dirs(dest: Path) -> dict[str, str]:
     }
 
 
-def predates(dest: Path, folder: str) -> bool:
-    """Whether a project was made before the template added a folder.
-
-    :param dest: Project root
-    :param folder: A key of ``ADDED_LATER``
-    :return: True when the folder is missing but its files are where they
-        used to be
-    """
-    return not (dest / folder).exists() and any(
-        (dest / old).is_dir() for old in ADDED_LATER[folder]
-    )
-
-
 def project_path(dest: Path, rel: str) -> Path:
     """Resolve a template path in a project made by any version of stackkit.
 
     :param dest: Project root
     :param rel: Path as the template names it, such as ``api_service/app.yaml``
-    :return: Where that path is in this project: under a renamed folder's old
-        name, or for a folder added later, where its files used to be
+    :return: Where that path is in this project, under a renamed folder's old
+        name if it still has it
     """
     first, _, rest = rel.partition("/")
-    if first in ADDED_LATER and predates(dest, first):
-        for old in ADDED_LATER[first]:
-            if (there := dest / old / rest if rest else dest / old).exists():
-                return there
     old = legacy_dirs(dest).get(first)
     return dest / (f"{old}/{rest}" if old and rest else old or rel)
+
+
+def service_copies(dest: Path, rel: str) -> list[Path]:
+    """Every service's copy of a ``gcp_services/`` file the manifest names.
+
+    :param dest: Project root
+    :param rel: Such as ``gcp_services/clients/fb_auth.py``
+    :return: That file in each folder with a ``gcp_services/`` (``api_service``,
+        ``job_service``, an older project's ``service``), whether or not it's there
+    """
+    return [d / rel for d in sorted(dest.iterdir()) if (d / COPIES).is_dir()]
+
+
+def manifest_paths(dest: Path, rel: str) -> list[Path]:
+    """Where a path the manifest names is in this project.
+
+    :param dest: Project root
+    :param rel: A manifest path
+    :return: Every service's copy for a ``gcp_services/`` path, else the one path
+    """
+    if rel.split("/", 1)[0] == COPIES:
+        return service_copies(dest, rel)
+    return [project_path(dest, rel)]
 
 
 # Google Cloud steps: (what, needed when the project has, permission tested,
@@ -128,7 +133,7 @@ def project_path(dest: Path, rel: str) -> Path:
 ACCESS_STEPS = [
     (
         f"grant the server's and jobs' accounts their roles ({SETUP_IAM})",
-        "shared",
+        "iam",
         "resourcemanager.projects.setIamPolicy",
         ["roles/resourcemanager.projectIamAdmin"],
     ),
@@ -146,7 +151,7 @@ ACCESS_STEPS = [
     ),
     (
         "add keys to Secret Manager",
-        "shared",
+        "iam",
         "secretmanager.secrets.create",
         ["roles/secretmanager.admin"],
     ),
@@ -264,7 +269,7 @@ def kept_parts(dest: Path, manifest: dict) -> list[str]:
     kept = []
     for name, module in manifest["modules"].items():
         if paths := module.get("paths"):
-            if any(project_path(dest, p).exists() for p in paths):
+            if any(f.exists() for p in paths for f in manifest_paths(dest, p)):
                 kept.append(name)
             continue
         if code is None:

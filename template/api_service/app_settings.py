@@ -1,8 +1,8 @@
 """
 Configures settings for project usage.
 
-The settings every service shares are in `gcp_services/base_settings.py`
-(edit `shared/gcp_services/base_settings.py`). This adds what only the API needs.
+The settings every service has are in `gcp_services/base_settings.py`.
+This adds what only the API needs.
 
 Loads settings from
  - `.env` for local instances
