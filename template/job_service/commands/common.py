@@ -10,12 +10,13 @@ from pathlib import Path
 from typing import Annotated, Any, cast
 
 import typer
+from jobs import NAME_RE, PAYLOAD_VAR
 
 JOB_DIR = Path(__file__).resolve().parent.parent
 CONFIG_FILE = JOB_DIR / "job_service.toml"
-PAYLOAD_VAR = "JOB_PAYLOAD"
-NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 LABEL_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
+# What Cloud Run takes as a job name
+CLOUD_RUN_NAME_RE = re.compile(r"^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$")
 # What a job gets when neither a flag nor job_service.toml says otherwise
 BUILT_IN: dict[str, Any] = {"timeout": "60m", "retries": 1, "tasks": 1}
 DEFAULT_REGION = "us-central1"
@@ -134,21 +135,31 @@ def job_id(namespace: str, job: str) -> str:
     :param namespace: The project's NAMESPACE, or blank
     :param job: A module name in ``jobs/``
     :return: The Cloud Run job name
+    :raises typer.BadParameter: If Cloud Run won't take the name, such as an
+        uppercase NAMESPACE
     """
-    name = f"{namespace}-{job}" if namespace else job
-    return name.replace("_", "-")
+    name = (f"{namespace}-{job}" if namespace else job).replace("_", "-")
+    if not CLOUD_RUN_NAME_RE.match(name):
+        raise typer.BadParameter(
+            f"{name!r} can't be a Cloud Run job name: NAMESPACE and the job's name "
+            "must be lowercase letters, digits and -, 63 characters at most."
+        )
+    return name
 
 
 def timer_id(namespace: str, timer: Timer) -> str:
     """
-    The timer's name at Google: the job's name, plus ``-<name>`` when it has one.
+    The timer's name at Google: the job's name, plus ``_<name>`` when it has one.
+
+    The job's name has no ``_``, so the first one marks where the timer's name
+    starts: job ``a`` with timer ``b`` and job ``a_b`` can't get the same id.
 
     :param namespace: The project's NAMESPACE, or blank
     :param timer: The timer
     :return: The Cloud Scheduler job name
     """
     base = job_id(namespace, timer.job)
-    return f"{base}-{timer.name.replace('_', '-')}" if timer.name else base
+    return f"{base}_{timer.name}" if timer.name else base
 
 
 def deploy_settings(config: dict[str, Any], job: str) -> dict[str, Any]:

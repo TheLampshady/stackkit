@@ -213,7 +213,7 @@ class VertexClient:
         if files:
             contents = [
                 *(
-                    types.Part.from_bytes(data=f.data, mime_type=f.mime_type)
+                    types.Part.from_bytes(data=f.data, mime_type=media_type(f))
                     for f in files
                 ),
                 prompt,
@@ -313,6 +313,16 @@ class VertexClient:
         raise AssertionError("unreachable")
 
 
+def media_type(file: FileInput) -> str:
+    """
+    The file's type as both models take it: lowercase, without parameters.
+
+    :param file: The file.
+    :return: Such as ``text/plain`` for ``Text/Plain; charset=utf-8``.
+    """
+    return file.mime_type.split(";")[0].strip().lower()
+
+
 def _claude_file_block(file: FileInput) -> dict[str, Any]:
     """
     Turns a file into the content block Claude takes for its type.
@@ -321,7 +331,7 @@ def _claude_file_block(file: FileInput) -> dict[str, Any]:
     :return: A ``document``, ``image`` or ``text`` content block.
     :raises ModelError: If Claude can't read the file's type.
     """
-    kind = file.mime_type.split(";")[0].strip().lower()
+    kind = media_type(file)
     if kind.startswith("text/"):
         return {"type": "text", "text": file.data.decode("utf-8", errors="replace")}
     if kind == "application/pdf" or kind.startswith("image/"):

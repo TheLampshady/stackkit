@@ -22,8 +22,9 @@ builds each job from this folder.
 | `.gcloudignore` | Files left out of what's sent to Google. |
 
 Every job is the same hosting: one folder, built the same way. A job is a Cloud
-Run job at Google named `<NAMESPACE>-<name>` that runs `jobs/<name>.py`. A timer is
-a separate Google Scheduler entry that starts one job; deleting a timer leaves
+Run job at Google named `<NAMESPACE>-<name>` (dashes for `_`) that runs `jobs/<name>.py`.
+A timer is a separate Google Scheduler entry that starts one job, named after the job
+plus `_<timer name>` when it has one; deleting a timer leaves
 the job, and a job can have several timers.
 
 ## Add a job
@@ -91,10 +92,13 @@ start and schedule can happen in any order, and a manual start doesn't disturb a
 | `make schedule-job JOB=<name> SCHEDULE="0 6 * * *" TIME_ZONE=Europe/London` | Sets one timer without the toml. Add `ARGS="--name zach --payload db=zach"` to name it and give it input. |
 | `make unschedule-job JOB=<name> ARGS="--name zach"` | Removes a timer (the job stays) |
 | `make list-jobs` | Each job in `jobs/`, whether it's online, and its timers |
-| `make job-runs JOB=<name> ARGS="--active"` | Recent runs, or only the ones in progress. Leave `JOB` off with `ALL=1` for every job. |
+| `make job-runs JOB=<name> ARGS="--active"` | Recent runs, or only the ones in progress. Leave `JOB` off with `ALL=1` for every job that's online. |
 
 Any other flag goes in `ARGS`, and `--dry-run` on a command that changes something
-prints the `gcloud` commands without running them.
+prints the `gcloud` commands without running them. Jobs and timers go in `REGION` from
+`.env` (default `us-central1`), like the other services; `make list-jobs REGION=europe-west1`
+overrides it for one command.
+`NAMESPACE` must be lowercase letters, digits and `-`, as Cloud Run names are.
 
 One job with several timers: add one `[[jobs.<name>.schedules]]` block per timer in
 `job_service.toml`, each with a different `name`, its `cron` and its `payload`, then

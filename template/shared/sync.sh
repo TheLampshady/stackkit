@@ -6,14 +6,22 @@
 # that run, test, build or deploy a service run this first, so the copies are
 # never out of date.
 #
-# A shared file newer than its copy is copied over it. A copy that differs
-# and is newer was edited by hand: nothing is overwritten, and this fails,
-# naming the file, so the change can be moved to shared/gcp_services/.
+# A copy that differs is overwritten, unless it was edited by hand: newer than
+# the shared file and, in a git repo, changed since the last commit. Then
+# nothing is overwritten and this fails, naming the file, so the change can be
+# moved to shared/gcp_services/. (git pull and checkout make files newer, so
+# the date alone can't tell; a committed copy is safe to overwrite.)
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 src="$root/shared/gcp_services"
 status=0
+
+# Whether a copy is committed and unchanged since, so overwriting it loses nothing
+committed() {
+    git -C "$root" ls-files --error-unmatch -- "$1" >/dev/null 2>&1 \
+        && git -C "$root" diff --quiet HEAD -- "$1" 2>/dev/null
+}
 
 for dir in "$root"/*_service; do
     [ -d "$dir" ] || continue
@@ -26,7 +34,7 @@ for dir in "$root"/*_service; do
         if [ -f "$copy" ] && cmp -s "$file" "$copy"; then
             continue
         fi
-        if [ -f "$copy" ] && [ "$copy" -nt "$file" ]; then
+        if [ -f "$copy" ] && [ "$copy" -nt "$file" ] && ! committed "$copy"; then
             echo "$name/gcp_services/$rel was edited directly." \
                 "Make the change in shared/gcp_services/$rel instead, then run make sync." >&2
             status=1

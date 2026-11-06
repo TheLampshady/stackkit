@@ -1,7 +1,7 @@
 """Tests for the job runner and the example job."""
 
 import pytest
-from jobs import task_share
+from jobs import payload, task_share
 
 from main import run
 
@@ -27,3 +27,13 @@ def test_run_rejects_names_that_are_not_jobs(name):
 def test_run_unknown_job_fails():
     with pytest.raises(ModuleNotFoundError):
         run("no_such_job")
+
+
+def test_payload_reads_the_variable(monkeypatch):
+    monkeypatch.delenv("JOB_PAYLOAD", raising=False)
+    assert payload() == {}
+    monkeypatch.setenv("JOB_PAYLOAD", '{"db": "zach"}')
+    assert payload() == {"db": "zach"}
+    monkeypatch.setenv("JOB_PAYLOAD", "[1]")
+    with pytest.raises(TypeError):
+        payload()

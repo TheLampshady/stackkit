@@ -57,7 +57,7 @@ The SPA is built into `api_service/static/` at deploy time, so in production the
 
 Each `*_service/` folder is a separate uv workspace package that deploys independently: the server to App Engine or Cloud Run, the agents to Agent Engine or Cloud Run, background jobs to Cloud Run jobs. They share GCP integration code by **copy, not import**: `shared/gcp_services/` is the one to edit, and `shared/sync.sh` (`make sync`) copies it into every `*_service/gcp_services/`. The make targets that run, test, build or deploy a service sync first, so a copy is never stale.
 
-The copy exists because each package deploys from its own directory and installs its own dependency set; App Engine, Cloud Run and Agent Engine upload only that directory. The sync copies a shared file only when it's newer than the copy. A copy edited by hand is never overwritten: the sync fails and names the file, so the change can be moved to `shared/gcp_services/`.
+The copy exists because each package deploys from its own directory and installs its own dependency set; App Engine, Cloud Run and Agent Engine upload only that directory. The sync copies a shared file over any copy that differs, unless the copy was edited by hand: newer than the shared file and, in a git repo, changed since the last commit. That copy is never overwritten: the sync fails and names the file, so the change can be moved to `shared/gcp_services/`. A copy that is committed and unchanged is safe to overwrite, so a `git pull` or checkout that makes a copy newer doesn't stop the sync.
 
 ## Data Model
 

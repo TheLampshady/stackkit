@@ -16,14 +16,12 @@ import importlib
 import inspect
 import logging
 import os
-import re
 import sys
 
 import app_settings  # noqa: F401  (loads .env and sets up logging first)
+from jobs import NAME_RE
 
 logger = logging.getLogger(__name__)
-
-JOB_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 
 def run(name: str) -> None:
@@ -35,7 +33,7 @@ def run(name: str) -> None:
     :raises ModuleNotFoundError: If there is no such job
     :side effects: Whatever the job does
     """
-    if not JOB_NAME_RE.match(name):
+    if not NAME_RE.match(name):
         raise ValueError(f"Job names are lowercase letters, digits and _: {name!r}")
     job = importlib.import_module(f"jobs.{name}")
     logger.info("Starting job %s", name)

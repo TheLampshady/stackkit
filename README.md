@@ -13,6 +13,9 @@ A non-technical person describes what they want. The `bootstrap` skill asks a fe
 | `skills/status/` | Prints a project's checklist (tools to install, `.env` keys, cloud database and storage to create) and cost estimate. `create` ends with it; ask for "status" any time to refresh it. |
 | `template/` | The stack itself — a normal, runnable project with every module in (FastAPI, React, Firestore, Cloud Storage, IAP, Vertex AI, ADK agents, App Engine and Cloud Run). Copy it by hand any time. |
 | `template/stackkit.toml` | Which parts are optional, what each one touches, and the placeholder values the bootstrap replaces. Deleted from every new project. |
+| `docs/HOW-IT-WORKS.md` | How the skills, scripts, manifest and tests fit together |
+| `docs/INTERVIEW.md` | The interview as a flow diagram: each question, what skips it, and what each answer keeps or removes |
+| `docs/reviews/` | Code reviews of branches, kept as a record |
 | `docs/research/` | Research charter and findings behind the design |
 
 ## Requirements

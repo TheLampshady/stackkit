@@ -705,7 +705,7 @@ async def admin_only(request: Request) -> dict:
 - `admin` - Boolean admin flag from claims
 - `claims` - Full token claims dict
 
-**Domain Whitelist**: Edit `VALID_DOMAINS` in `fb_auth.py` to control allowed email domains.
+**Domain Whitelist**: Set `VALID_DOMAINS` in `.env` (read by `settings.valid_domains`) to control allowed email domains; blank allows any account.
 
 **Rationale**: Centralized auth handles token verification, user enrichment, and domain validation consistently across all endpoints.
 
@@ -714,7 +714,7 @@ async def admin_only(request: Request) -> dict:
 All Google ADK agents MUST follow the standard directory structure and export `root_agent`.
 
 ```
-api_service/agents/
+agent_service/agents/
 └── my_agent/
     ├── __init__.py    # Exports root_agent
     ├── agent.py       # Agent definition
@@ -863,9 +863,9 @@ The script reads `PROJECT_ID` from the root `.env` file and grants:
 
 Vertex AI (Gemini) calls need `roles/aiplatform.user` on the runtime service account; `setup_iam.sh` grants it, along with Firestore and Storage access, because newer projects no longer give default service accounts the Editor role. On Cloud Run it also grants `roles/run.builder` to the Compute Engine default account, which builds source deploys. No API key is involved (see Service Pattern VI).
 
-When adding a new secret: add it to both `SECRET_KEY_NAMES` in
-`gcp_secrets.py` **and** the `SECRETS` array in
-`gcp/bin/setup_iam.sh`, then re-run the script before deploying.
+When adding a new secret: add it to both `SECRET_KEY_NAMES` in the
+`app_settings.py` of each service that reads it **and** the `SECRETS`
+array in `gcp/bin/setup_iam.sh`, then re-run the script before deploying.
 
 **Storage Bucket CORS:**
 
@@ -984,4 +984,4 @@ checkboxes change — its body is history, not a living doc.
 - MINOR: New pattern or utility added
 - PATCH: Clarifications or examples
 
-**Version**: 3.11.0 | **Ratified**: 2026-03-12 | **Last Amended**: 2026-10-14
+**Version**: 3.11.1 | **Ratified**: 2026-03-12 | **Last Amended**: 2026-11-06

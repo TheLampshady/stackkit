@@ -45,6 +45,18 @@ def deploy(
 
     Settings come from these flags, then ``[jobs.<job>]`` and ``[defaults]`` in
     job_service.toml, then built-in values.
+    \f
+    :param ctx: The command's Typer context
+    :param job: The job to deploy
+    :param all_jobs: Deploy every job in ``jobs/`` instead
+    :param timeout: How long a run may take
+    :param retries: Tries again when a run fails
+    :param tasks: Copies of the job that run at once
+    :param cpu: CPUs per task
+    :param memory: Memory per task
+    :param dry_run: Print the commands instead of running them
+    :raises typer.Exit: If the build or gcloud failed
+    :side effects: Runs ``make build``, then creates or updates Cloud Run jobs
     """
     state = get_state(ctx)
     require_project(state)

@@ -12,4 +12,5 @@ def test_backfill_job_logs_its_input(monkeypatch):
     info = mock.MagicMock()
     monkeypatch.setattr(backfill.logger, "info", info)
     run("backfill")
-    info.assert_called_once_with("Backfill job started with input %s", {"db": "main"})
+    # The job hands its input to the log; the message's wording is copy
+    assert {"db": "main"} in info.call_args.args

@@ -1,6 +1,6 @@
 """``schedule`` and ``unschedule``: Google timers that start a job."""
 
-from typing import Annotated
+from typing import Annotated, Any, Literal
 
 import typer
 
@@ -24,6 +24,89 @@ from commands.common import (
     timers_for,
 )
 
+JSON_HEADER = "Content-Type=application/json"
+
+
+def timer_args(
+    state: State, timer: Timer, number: str, action: Literal["create", "update"]
+) -> list[str]:
+    """
+    The gcloud arguments that create a timer, or change one that's there.
+
+    ``update`` names its header flag differently from ``create``.
+
+    :param state: The shared settings
+    :param timer: The timer to set
+    :param number: The project number, for the account that starts the job
+    :param action: ``create`` for a new timer, ``update`` for one at Google
+    :return: Everything after ``gcloud``
+    """
+    uri = (
+        f"https://run.googleapis.com/v2/projects/{state.project_id}"
+        f"/locations/{state.region}/jobs/{job_id(state.namespace, timer.job)}:run"
+    )
+    header = "--headers" if action == "create" else "--update-headers"
+    return [
+        "scheduler", "jobs", action, "http", timer_id(state.namespace, timer),
+        f"--project={state.project_id}",
+        f"--location={state.region}",
+        f"--schedule={timer.cron}",
+        f"--time-zone={timer.time_zone}",
+        f"--uri={uri}",
+        f"--oauth-service-account-email={number}-compute@developer.gserviceaccount.com",
+        f"{header}={JSON_HEADER}",
+        # Always sent, so removing a payload from a timer also clears the old one
+        f"--message-body={run_body(timer.payload)}",
+        "--quiet",
+    ]  # fmt: skip
+
+
+def timers_to_set(
+    config: dict[str, Any],
+    names: list[str],
+    cron: str | None,
+    name: str | None,
+    tz: str | None,
+    payload: dict[str, Any],
+) -> list[Timer]:
+    """
+    Pick the timers to set: one from the flags with a cron, else the toml's.
+
+    :param config: The parsed ``job_service.toml``
+    :param names: The jobs picked on the command line
+    :param cron: ``--cron``, if given
+    :param name: ``--name``, if given
+    :param tz: ``--tz``, if given
+    :param payload: The input from ``--payload`` and ``--json``
+    :return: The timers
+    :raises typer.BadParameter: If the flags don't fit together, or there are no
+        timers to set
+    """
+    if cron:
+        if len(names) != 1:
+            raise typer.BadParameter(
+                "--cron sets one timer; name a job instead of --all."
+            )
+        if name is not None and not LABEL_RE.match(name):
+            raise typer.BadParameter("Use lowercase letters, digits, - and _.")
+        return [
+            Timer(
+                job=names[0],
+                name=name,
+                cron=cron,
+                time_zone=tz or DEFAULT_TIME_ZONE,
+                payload=payload,
+            )
+        ]
+    if payload or name or tz:
+        raise typer.BadParameter("--payload, --json, --name and --tz need --cron.")
+    timers = [t for n in names for t in timers_for(config, n)]
+    if not timers:
+        raise typer.BadParameter(
+            "No timers in job_service.toml for that. Pass --cron to make one."
+        )
+    return timers
+
 
 def apply_timer(state: State, timer: Timer, number: str, dry_run: bool) -> None:
     """
@@ -35,33 +118,19 @@ def apply_timer(state: State, timer: Timer, number: str, dry_run: bool) -> None:
     :param dry_run: Print instead of running
     :side effects: Creates or changes a Cloud Scheduler job
     """
-    name = timer_id(state.namespace, timer)
-    where = [f"--project={state.project_id}", f"--location={state.region}"]
-    action = "create"
+    action: Literal["create", "update"] = "create"
     if not dry_run:
         found = gcloud(
-            ["scheduler", "jobs", "describe", name, *where],
+            [
+                "scheduler", "jobs", "describe", timer_id(state.namespace, timer),
+                f"--project={state.project_id}",
+                f"--location={state.region}",
+            ],
             changes=False,
             capture=True,
-        )
+        )  # fmt: skip
         action = "update" if found.returncode == 0 else "create"
-    uri = (
-        f"https://run.googleapis.com/v2/projects/{state.project_id}"
-        f"/locations/{state.region}/jobs/{job_id(state.namespace, timer.job)}:run"
-    )
-    args = [
-        "scheduler", "jobs", action, "http", name, *where,
-        f"--schedule={timer.cron}",
-        f"--time-zone={timer.time_zone}",
-        f"--uri={uri}",
-        "--http-method=POST",
-        f"--oauth-service-account-email={number}-compute@developer.gserviceaccount.com",
-        "--headers=Content-Type=application/json",
-        # Always sent, so removing a payload from a timer also clears the old one
-        f"--message-body={run_body(timer.payload)}",
-        "--quiet",
-    ]  # fmt: skip
-    succeeded(gcloud(args, dry_run=dry_run))
+    succeeded(gcloud(timer_args(state, timer, number, action), dry_run=dry_run))
 
 
 def schedule(
@@ -90,34 +159,28 @@ def schedule(
 
     With --cron it sets one timer from the flags. Without it, it sets the timers
     listed for the job (or every job, with --all) in job_service.toml.
+    \f
+    :param ctx: The command's Typer context
+    :param job: The job to put on a timer
+    :param all_jobs: Set every job's timers instead
+    :param cron: When to run, for one timer from the flags
+    :param name: That timer's name
+    :param tz: That timer's time zone
+    :param payload: That timer's input, as key=value
+    :param json_file: That timer's input, from a JSON file
+    :param dry_run: Print the gcloud commands instead of running them
+    :side effects: Creates or changes Cloud Scheduler jobs
     """
     state = get_state(ctx)
     require_project(state)
-    names = pick_jobs(job, all_jobs)
-    if cron:
-        if all_jobs:
-            raise typer.BadParameter(
-                "--cron sets one timer; name a job instead of --all."
-            )
-        if name is not None and not LABEL_RE.match(name):
-            raise typer.BadParameter("Use lowercase letters, digits, - and _.")
-        timers = [
-            Timer(
-                job=names[0],
-                name=name,
-                cron=cron,
-                time_zone=tz or DEFAULT_TIME_ZONE,
-                payload=build_payload(payload, json_file),
-            )
-        ]
-    else:
-        if payload or json_file or name or tz:
-            raise typer.BadParameter("--payload, --json, --name and --tz need --cron.")
-        timers = [t for n in names for t in timers_for(state.config, n)]
-        if not timers:
-            raise typer.BadParameter(
-                "No timers in job_service.toml for that. Pass --cron to make one."
-            )
+    timers = timers_to_set(
+        state.config,
+        pick_jobs(job, all_jobs),
+        cron,
+        name,
+        tz,
+        build_payload(payload, json_file),
+    )
 
     # Google's timer starts the job as the Compute Engine default account
     number = "PROJECT_NUMBER"
@@ -144,7 +207,15 @@ def unschedule(
     ] = None,
     dry_run: DryRun = False,
 ) -> None:
-    """Remove a job's timer. The job stays and can still be started by hand."""
+    """
+    Remove a job's timer. The job stays and can still be started by hand.
+    \f
+    :param ctx: The command's Typer context
+    :param job: The job whose timer goes
+    :param name: The timer's name, if it has one
+    :param dry_run: Print the gcloud command instead of running it
+    :side effects: Deletes a Cloud Scheduler job
+    """
     state = get_state(ctx)
     require_project(state)
     pick_jobs(job, False)

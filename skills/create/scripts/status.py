@@ -388,8 +388,10 @@ def secret_names(dest: Path) -> list[str]:
     :return: Names in order, without the template's ``TODO`` placeholder
     """
     names = []
-    for settings in ("api_service/app_settings.py", "agent_service/app_settings.py"):
-        path = project_path(dest, settings)
+    # Every service's settings, and the server's from before it was api_service/
+    paths = sorted(dest.glob("*_service/app_settings.py"))
+    paths += [dest / old / "app_settings.py" for old in RENAMED.values()]
+    for path in paths:
         if path.is_file() and (match := SECRETS_RE.search(path.read_text())):
             for name in re.findall(r"[\"']([A-Z0-9_]+)[\"']", match.group(1)):
                 if name != "TODO" and name not in names:

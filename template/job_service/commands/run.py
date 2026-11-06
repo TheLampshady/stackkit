@@ -7,10 +7,10 @@ import sys
 from typing import Annotated
 
 import typer
+from jobs import PAYLOAD_VAR
 
 from commands.common import (
     JOB_DIR,
-    PAYLOAD_VAR,
     DryRun,
     JsonOption,
     PayloadOption,
@@ -46,6 +46,16 @@ def run(
     Run a job once. The job reads its input with ``jobs.payload()``.
 
     Remote runs need the job deployed first (``deploy``).
+    \f
+    :param ctx: The command's Typer context
+    :param job: The job to run
+    :param local: Run on this computer instead of at Google
+    :param payload: The run's input, as key=value
+    :param json_file: The run's input, from a JSON file
+    :param wait: At Google, wait until the run ends
+    :param dry_run: Print the command instead of running it
+    :raises typer.Exit: With the job's exit code, run locally, or if gcloud failed
+    :side effects: Runs the job here, or starts a Cloud Run job execution
     """
     state = get_state(ctx)
     pick_jobs(job, False)

@@ -175,7 +175,7 @@ cd agent_service && uv run --all-groups pytest tests
 
 **Symptom**: `make run`, `make check` or a deploy stops with `<folder>/gcp_services/<file> was edited directly`
 
-**Cause**: each `*_service/gcp_services/` is a copy of `shared/gcp_services/`, refreshed before every run, test, build and deploy. That copy was changed by hand, so refreshing it would lose the change.
+**Cause**: each `*_service/gcp_services/` is a copy of `shared/gcp_services/`, refreshed before every run, test, build and deploy. That copy is newer than the shared file and has changes that aren't committed, so refreshing it would lose them. (A committed copy is overwritten without asking: git has it.)
 
 **Solution**: make the same change in `shared/gcp_services/<file>`, then `make sync`. Edits in `shared/` reach every service.
 

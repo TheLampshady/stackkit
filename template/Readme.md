@@ -27,7 +27,7 @@ cp .env.sample .env
 # Set PROJECT_ID and NAMESPACE, then choose USE_EMULATOR
 ```
 
-Deployed instances load their secrets from Secret Manager at startup (`SECRET_KEY_NAMES` in `api_service/app_settings.py`). Locally, put the same values in `.env` — there is no pull step.
+Deployed instances load their secrets from Secret Manager at startup (`SECRET_KEY_NAMES` in each `*_service/app_settings.py`). Locally, put the same values in `.env` — there is no pull step.
 
 > **Need help?** See [Environment Setup](./docs/ENVIRONMENTS.md) for detailed configuration including GCloud CLI setup and Firebase initialization.
 
@@ -88,7 +88,7 @@ Daily development commands. All commands use `make` targets defined in the root 
 | `make schedule-job JOB=<name>` | Run the online job on a timer (`SCHEDULE`, `TIME_ZONE`, or the timers in `job_service/job_service.toml`) |
 | `make unschedule-job JOB=<name>` | Take the job off its timer |
 | `make list-jobs` | Which jobs are online and on a timer |
-| `make job-runs JOB=<name>` | List the job's recent runs |
+| `make job-runs JOB=<name>` | List the job's recent runs (`ALL=1`: every job that's online) |
 
 Every `-be` / `-fe` variant of the quality targets can be run on its own (`make lint-fe`, `make test-be`, …). Infrastructure targets — Firestore rules, indexes, bucket CORS, IAM, the `gcp` CLI — live in `gcp/Makefile`; see the [Cloud Guide](./docs/CLOUD.md).
 

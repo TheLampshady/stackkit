@@ -2,7 +2,13 @@
 
 import json
 import os
+import re
 from typing import Any
+
+# A job is a module in jobs/: lowercase letters, digits and _
+NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+# The variable a run's input arrives in, as a JSON object
+PAYLOAD_VAR = "JOB_PAYLOAD"
 
 
 def task_share() -> tuple[int, int]:
@@ -29,10 +35,10 @@ def payload() -> dict[str, Any]:
     :return: The input, empty when the run was given none
     :raises TypeError: If it isn't a JSON object
     """
-    raw = os.environ.get("JOB_PAYLOAD", "")
+    raw = os.environ.get(PAYLOAD_VAR, "")
     if not raw:
         return {}
     data = json.loads(raw)
     if not isinstance(data, dict):
-        raise TypeError("JOB_PAYLOAD must be a JSON object")
+        raise TypeError(f"{PAYLOAD_VAR} must be a JSON object")
     return data

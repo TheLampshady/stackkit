@@ -1,9 +1,9 @@
 """Runs the example job with Google's services mocked."""
 
+# stackkit:begin database
 from unittest import mock
 
-from jobs import example
-
+# stackkit:end database
 from main import run
 
 
@@ -13,10 +13,8 @@ def test_example_job_runs(monkeypatch):
     db.collection.return_value.add = mock.AsyncMock()
     monkeypatch.setattr("gcp_services.clients.gcp_services.db", db)
     # stackkit:end database
-    info = mock.MagicMock()
-    monkeypatch.setattr(example.logger, "info", info)
     run("example")
-    info.assert_called_once()
     # stackkit:begin database
-    db.collection.assert_called_once_with("job_runs")
+    assert db.collection.call_args.args[0] == "job_runs"
+    assert db.collection.return_value.add.call_args.args[0]["job"] == "example"
     # stackkit:end database

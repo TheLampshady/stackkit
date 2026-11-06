@@ -284,7 +284,7 @@ make deploy-cr    # Cloud Run
 
 **Method**: GCP Secret Manager, loaded into `os.environ` at startup by `load_secrets()` — and only when running on GCP (`IS_GCP`). Locally, the same values go in `.env`; nothing is fetched.
 
-The list of secrets to load is `SECRET_KEY_NAMES` in `api_service/app_settings.py`. It currently holds the placeholder `["TODO"]` — no real secret is wired up yet.
+The list of secrets to load is `SECRET_KEY_NAMES` in each service's `app_settings.py` (`api_service/`, `agent_service/`, `job_service/`). It currently holds the placeholder `["TODO"]` — no real secret is wired up yet.
 
 ### Adding New Secrets
 
@@ -294,7 +294,7 @@ The list of secrets to load is `SECRET_KEY_NAMES` in `api_service/app_settings.p
    echo -n "secret-value" | gcloud secrets versions add SECRET_NAME --data-file=-
    ```
 
-2. Add the name to `SECRET_KEY_NAMES` in `api_service/app_settings.py`.
+2. Add the name to `SECRET_KEY_NAMES` in the `app_settings.py` of each service that reads it.
 
 3. Add the same name to the `SECRETS` array in `gcp/bin/setup_iam.sh` and re-run it — the server's service account has no access to a new secret until you do.
 

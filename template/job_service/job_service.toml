@@ -16,7 +16,7 @@
 # tasks = 1                # copies of the job running at once
 # cpu = "1"
 # memory = "512Mi"
-# region = "us-central1"   # else REGION in .env, else us-central1
+# The region is REGION in .env (default us-central1), as for the other services.
 
 # A job on a timer: runs every morning with its own input, read in the job with
 # jobs.payload(). Add more [[jobs.example.schedules]] blocks for more times; give

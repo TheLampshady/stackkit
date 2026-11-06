@@ -100,7 +100,7 @@ comma separated, default blank; blank disables the check and allows any account)
 ### ADK Agents
 - Define agents using `Agent()` class from `google.adk`
 - Must export `root_agent` in each agent module
-- Deploy with `make deploy-agent` (Agent Engine) or `make deploy-cr` (Cloud Run)
+- Deploy with `make deploy-agent` (Agent Engine) or `make deploy-agent-cr` (Cloud Run)
 
 ## Coding Standards
 

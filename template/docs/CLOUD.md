@@ -206,7 +206,7 @@ The script reads `PROJECT_ID` from the root `.env` and grants:
 Agents deploy on their own, so the script also grants the accounts they run as: `roles/datastore.user` and `roles/aiplatform.user` to the Compute Engine default account (`make deploy-agent-cr`), and `roles/datastore.user` to the Agent Engine service agent, `service-<project-number>@gcp-sa-aiplatform-re.iam.gserviceaccount.com` (`make deploy-agent`), whose own role already covers Vertex AI. Google creates that service agent on the first Agent Engine deploy, so rerun the script after it.
 <!-- stackkit:end agents -->
 
-Adding a secret means editing both `SECRET_KEY_NAMES` in `api_service/app_settings.py` and the `SECRETS` array in `gcp/bin/setup_iam.sh`, then re-running the script before deploying.
+Adding a secret means editing both `SECRET_KEY_NAMES` in the `app_settings.py` of each service that reads it (`api_service/`, `agent_service/`, `job_service/`) and the `SECRETS` array in `gcp/bin/setup_iam.sh`, then re-running the script before deploying.
 
 ### Storage Bucket CORS
 

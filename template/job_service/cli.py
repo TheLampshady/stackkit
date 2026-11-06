@@ -54,7 +54,7 @@ def main(
     ] = None,
     region: Annotated[
         str | None,
-        typer.Option(help="Where the jobs live. Beats job_service.toml and REGION."),
+        typer.Option(help="Where the jobs live. Beats REGION in .env."),
     ] = None,
 ) -> None:
     """
@@ -71,10 +71,7 @@ def main(
     ctx.obj = State(
         project_id=project_id or os.environ.get("PROJECT_ID", ""),
         namespace=os.environ.get("NAMESPACE", ""),
-        region=region
-        or config.get("defaults", {}).get("region")
-        or os.environ.get("REGION")
-        or DEFAULT_REGION,
+        region=region or os.environ.get("REGION") or DEFAULT_REGION,
         config=config,
     )
 
