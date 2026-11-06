@@ -1,4 +1,4 @@
-# stackkit manifest: read by the stackkit bootstrap skill, deleted from every
+# stackkit manifest: read by stackkit's build script (bootstrap.py), deleted from every
 # project it creates. The template runs as-is without it.
 #
 # A module is removed by deleting its `paths`, dropping it from the uv
@@ -13,16 +13,26 @@
 # A `self_contained` module's paths are skipped when checking other modules'
 # refs.
 #
+# A path starting `gcp_services/` names that file in every service's copy
+# (`api_service/gcp_services/...`, `job_service/gcp_services/...`): each
+# service keeps its own copy of the Google clients.
+#
 # `only_without` lists files that only matter once the module is removed (a
 # fallback it replaces); they're deleted when the module is kept.
 #
 # `requires` lists modules a kept module can't work without; the bootstrap
-# refuses to remove them. An `implicit` module is never asked about: it's
+# refuses to remove them. `requires_any` lists modules a kept module needs at
+# least one of (the database needs a server or jobs to use it). An `implicit` module is never asked about: it's
 # removed on its own once no kept module requires it.
 
 [rules]
-# Each group must keep at least one module.
-keep_one_of = [["api", "frontend"], ["gae", "cloud_run"]]
+# Each group must keep at least one module. A table's group applies only when
+# a `when_kept` module is kept: hosting is for a server or a web page, and a
+# project with only jobs has neither.
+keep_one_of = [
+    ["api", "frontend", "jobs"],
+    { modules = ["gae", "cloud_run"], when_kept = ["api", "frontend"] },
+]
 
 [values]
 # Placeholder strings in the template, replaced with the new project's values.
@@ -36,20 +46,19 @@ keys = ["PROJECT_ID", "NAMESPACE", "VALID_DOMAINS"]
 [modules.api]
 summary = "The backend (FastAPI). Without it the project is a static site."
 # gcp/bin/setup_iam.sh grants the server's accounts their roles
-requires = ["gcp"]
+requires = ["gcp", "iam"]
 paths = [
-    "service",
+    "api_service",
     ".run/Service.run.xml",
     "frontend/src/lib/api.ts",
     "frontend/src/lib/api.test.ts",
     "frontend/src/lib/types.ts",
-    "gcp/bin/setup_iam.sh",
 ]
-workspace_member = "service"
+workspace_member = "api_service"
 # The static site's own deploy; an API project serves the frontend itself
 only_without = ["frontend/app.yaml", "frontend/.gcloudignore", "frontend/Makefile"]
 refs = [
-    "service/",
+    "api_service/",
     "SERVICE_DIR",
     "run-be",
     "build-be",
@@ -57,8 +66,6 @@ refs = [
     "typecheck-be",
     "@/lib/api",
     "/api/",
-    "setup-iam",
-    "setup_iam",
 ]
 
 [modules.frontend]
@@ -68,13 +75,23 @@ refs = ["frontend/", "bun ", "Vite", "run-fe", "build-fe"]
 
 [modules.agents]
 summary = "AI agents that run on their own (Google ADK), deployed separately. Their prompts live in the database."
-requires = ["ai", "database"]
+requires = ["ai", "database", "iam"]
 # Deploys on its own with its own copies of the shared clients, so other
 # modules' refs aren't checked inside it.
 self_contained = true
 paths = ["agent_service"]
 workspace_member = "agent_service"
-refs = ["agent_service", "adk-web", "adk-api", "deploy-agent", "sync-agents"]
+refs = ["agent_service", "adk-web", "adk-api", "deploy-agent"]
+
+[modules.jobs]
+summary = "Background work that runs, finishes and exits, by hand or on a timer (Cloud Run jobs). No Docker."
+requires = ["iam", "gcp"]
+# Deploys on its own with its own copy of the shared clients, so other
+# modules' refs aren't checked inside it.
+self_contained = true
+paths = ["job_service"]
+workspace_member = "job_service"
+refs = ["job_service", "run-job", "deploy-job", "start-job", "schedule-job", "unschedule-job", "list-jobs", "job-runs"]
 
 [modules.notebooks]
 summary = "Jupyter notebooks for AI/ML experiments."
@@ -91,7 +108,8 @@ refs = ["http_tests"]
 
 [modules.database]
 summary = "Saves records between visits (Firestore)."
-requires = ["api", "firebase"]
+requires = ["firebase"]
+requires_any = ["api", "jobs"]
 paths = [
     "gcp/firestore.rules",
     "gcp/firestore.indexes.json",
@@ -100,6 +118,8 @@ paths = [
     "gcp/bin/move_db.py",
     ".run/sync-db.run.xml",
     "notebooks/service_test.ipynb",
+    "job_service/jobs/summarize_file.py",
+    "job_service/tests/test_summarize_file_job.py",
 ]
 json_keys = { "gcp/firebase.json" = ["firestore", "emulators.firestore"] }
 refs = [
@@ -114,11 +134,14 @@ refs = [
 
 [modules.storage]
 summary = "Keeps uploaded files such as photos and PDFs (Cloud Storage)."
-requires = ["api", "firebase"]
+requires = ["firebase"]
+requires_any = ["api", "jobs"]
 paths = [
-    "service/gcp_services/clients/gcp_storage.py",
+    "gcp_services/clients/gcp_storage.py",
     "gcp/storage.rules",
     "gcp/cors.json",
+    "job_service/jobs/summarize_file.py",
+    "job_service/tests/test_summarize_file_job.py",
 ]
 json_keys = { "gcp/firebase.json" = ["storage", "emulators.storage"] }
 refs = [
@@ -136,8 +159,8 @@ refs = [
 [modules.auth_iap]
 summary = "Team-only access: Google's Identity-Aware Proxy in front of the whole app."
 paths = [
-    "service/gcp_services/clients/iap_auth.py",
-    "service/tests/test_iap_auth.py",
+    "gcp_services/clients/iap_auth.py",
+    "api_service/tests/test_iap_auth.py",
     "gcp/bin/setup_iap.sh",
 ]
 refs = [
@@ -157,16 +180,21 @@ refs = [
 summary = "Accounts people sign up for (Firebase Auth). The server side only; login screens are built on top."
 requires = ["api", "firebase"]
 paths = [
-    "service/gcp_services/clients/fb_auth.py",
+    "gcp_services/clients/fb_auth.py",
     "gcp/bin/test_auth.py",
 ]
 json_keys = { "gcp/firebase.json" = ["emulators.auth"] }
 refs = ["fb_auth", "firebase_auth_required", "auth_client", "test_auth.py"]
 
 [modules.ai]
-summary = "One-off AI calls from the API (Gemini or Claude on Vertex AI)."
-requires = ["api"]
-paths = ["service/gcp_services/clients/gcp_vertex.py"]
+summary = "One-off AI calls from the server or jobs (Gemini or Claude on Vertex AI)."
+requires_any = ["api", "jobs"]
+paths = [
+    "gcp_services/clients/gcp_vertex.py",
+    "job_service/jobs/summarize_file.py",
+    "job_service/tests/test_summarize_file_job.py",
+    "job_service/tests/test_vertex_files.py",
+]
 refs = ["gcp_vertex", "default_text_model", "DEFAULT_TEXT_MODEL"]
 
 [modules.firebase]
@@ -174,8 +202,8 @@ summary = "The Firebase app and its local emulator, shared by database, storage 
 implicit = true
 requires = ["gcp"]
 paths = [
-    "service/gcp_services/clients/gcp_services.py",
-    "service/gcp_services/clients/fb_config.py",
+    "gcp_services/clients/gcp_services.py",
+    "gcp_services/clients/fb_config.py",
     "gcp/firebase.json",
     "gcp/.firebaserc",
     "gcp/.gitignore",
@@ -198,8 +226,10 @@ refs = [
 [modules.gae]
 summary = "Deploys to App Engine: free custom domains, no streaming responses."
 requires = ["gcp"]
+# Hosts the server or the web page; a project with only jobs has neither
+requires_any = ["api", "frontend"]
 paths = [
-    "service/app.yaml",
+    "api_service/app.yaml",
     "gcp/dispatch.yaml",
     "gcp/commands/split_cookie.py",
     "frontend/app.yaml",
@@ -218,13 +248,19 @@ refs = [
 [modules.cloud_run]
 summary = "Deploys to Cloud Run: scales to zero and streams, custom domains need a load balancer."
 requires = ["api"]
-paths = ["service/Procfile"]
+paths = ["api_service/Procfile"]
 refs = ["deploy-cr", "Procfile", "run.app", "gcloud run"]
 
 [modules.always_on]
 summary = "Keeps one server instance running so visits never wait for a start. Billed while idle."
 requires = ["api"]
 refs = ["min_instances", "MIN_INSTANCES := 1"]
+
+[modules.iam]
+summary = "The script that grants every backend's service accounts their roles (setup-iam)."
+implicit = true
+paths = ["gcp/bin/setup_iam.sh"]
+refs = ["setup-iam", "setup_iam"]
 
 [modules.gcp]
 summary = "The gcp/ tooling folder: emulator, provisioning, service account roles (setup-iam) and App Engine helpers."

@@ -18,6 +18,7 @@ Safe to rerun.
 import logging
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -99,7 +100,11 @@ def provision(
 ) -> None:
     """Create the project's cloud resources, skipping any that exist."""
     logging.basicConfig(level=logging.INFO, format="%(message)s")
-    from app_settings import settings
+    from gcp_services.base_settings import CoreSettings, load_environment
+
+    root = Path(__file__).resolve().parent.parent.parent
+    env_file = load_environment(root)
+    settings = CoreSettings(app_dir=root, root_dir=root, env_file=env_file)
 
     if not settings.project_id or not settings.namespace:
         typer.echo("Set PROJECT_ID and NAMESPACE in .env first.")

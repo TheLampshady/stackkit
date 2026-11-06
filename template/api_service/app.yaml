@@ -7,7 +7,7 @@ automatic_scaling:
   # stackkit:end always_on
   # Caps how many run at once, so a traffic spike can't run up the bill.
   # stackkit:begin cloud_run
-  # Keep it in step with MAX_INSTANCES in service/Makefile.
+  # Keep it in step with MAX_INSTANCES in api_service/Makefile.
   # stackkit:end cloud_run
   max_instances: 2
 

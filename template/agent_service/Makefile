@@ -1,34 +1,13 @@
 -include ../.env
 export
 
-SERVICE_DIR=../service
-GCP_SERVICES_SRC=$(SERVICE_DIR)/gcp_services
-GCP_SERVICES_DST=gcp_services
-
 SERVICE_NAME ?= ${NAMESPACE}-agent
 REGION ?= us-central1
 
 .PHONY: build
 build:
-	uv export --frozen --package agents --no-dev --no-hashes --format requirements-txt > requirements.txt
+	uv export --frozen --package agent_service --no-dev --no-hashes --format requirements-txt > requirements.txt
 
-
-# ------ SYNC ------
-# Syncs entire gcp_services/ from service (source of truth).
-# Only clients/gcp_services.py is excluded -- agents have their own
-# Firestore-only override. Everything else syncs, even files agents
-# don't import (fb_auth, gcp_storage, gcp_vertex) -- they're harmless.
-
-.PHONY: sync-agents
-sync-agents:
-	@echo "Syncing gcp_services from $(GCP_SERVICES_SRC)/..."
-	@if [ ! -d "$(GCP_SERVICES_SRC)" ]; then \
-		echo "ERROR: Source directory missing: $(GCP_SERVICES_SRC)" >&2; \
-		exit 1; \
-	fi
-	@rsync -a --exclude='clients/gcp_services.py' \
-		$(GCP_SERVICES_SRC)/ $(GCP_SERVICES_DST)/
-	@echo "Synced gcp_services/ (excluding clients/gcp_services.py)"
 
 # ------ LOCAL DEV ------
 

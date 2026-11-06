@@ -1,6 +1,6 @@
 # Moving code into stackkit
 
-How to fit existing code into a stackkit project: a whole project being moved onto stackkit, or a feature from another project being added to one. `bootstrap` reads this while it builds the move list and asks about what doesn't fit; `create` follows it while it moves the code.
+How to fit existing code into a stackkit project: a whole project being moved onto stackkit, or a feature from another project being added to one. The `stackkit` skill reads this while it builds the move list and asks about what doesn't fit; `create` follows it while it moves the code.
 
 ## The aim
 
@@ -31,12 +31,12 @@ The template's targets and tooling stay as they are: adapt the moved code to Vit
 | Pages or screens | `frontend/src/pages/<Name>Page.tsx`, each with a route in `frontend/src/App.tsx` |
 | Static files (images, fonts, `favicon`, `robots.txt`) | `frontend/public/` |
 | Global CSS | `frontend/src/index.css` |
-| Server endpoints, in any language | FastAPI routes in `service/api/`, included in `api_router` (prefix `/api`, so URLs the page calls stay the same) |
-| Python server code (Flask, Django, FastAPI) | `service/`, mostly as it is, its routes on `api_router` |
+| Server endpoints, in any language | FastAPI routes in `api_service/api/`, included in `api_router` (prefix `/api`, so URLs the page calls stay the same) |
+| Python server code (Flask, Django, FastAPI) | `api_service/`, mostly as it is, its routes on `api_router` |
 | Database access and models | Pydantic models and the Firestore client from `gcp_services` (`AGENTS.md`, "Firebase Client Access") |
 | Sign-in | The sign-in chosen in the interview (`auth_iap` or `auth_firebase`) |
-| AI calls | `service/gcp_services/clients/gcp_vertex.py`, or an agent in `agent_service/agents/` |
-| Background jobs and scripts | `service/` (Python) or `frontend/scripts/` (TypeScript), each with a make target |
+| AI calls | `vertex` from `gcp_services/clients/gcp_vertex.py`, or an agent in `agent_service/agents/` |
+| Background jobs and scripts | Long or scheduled work: a job in `job_service/jobs/` (Python). Quick work the server runs: `api_service/`. Build scripts: `frontend/scripts/` (TypeScript). Each with a make target |
 
 Never keep the old layout beside the new one: no `legacy/`, `old/`, `src/`, `app/` or `public/` at the root.
 
@@ -52,7 +52,7 @@ The React code moves almost as it is. What changes is everything Next does aroun
 | `loading.tsx`, `error.tsx`, `not-found.tsx` | `isPending` and `error` from `useQuery`; the route's `errorElement`; a `*` route |
 | `"use client"` | Delete the line. Everything runs in the browser |
 | Server components or `getServerSideProps` / `getStaticProps` fetching data | Move the fetching into a FastAPI route; the page calls it with `useQuery` through `frontend/src/lib/api.ts`. Data that never changes can be imported directly |
-| `app/api/**/route.ts`, `pages/api/**` | FastAPI routes in `service/api/` at the same paths under `/api`, rewritten in Python. Request and response bodies become Pydantic models |
+| `app/api/**/route.ts`, `pages/api/**` | FastAPI routes in `api_service/api/` at the same paths under `/api`, rewritten in Python. Request and response bodies become Pydantic models |
 | Server actions (`"use server"`) | A POST route in FastAPI, called with `useMutation` |
 | `next/link` | `Link` from `react-router-dom`, `href` → `to` |
 | `next/navigation`, `next/router` | `useNavigate`, `useParams`, `useSearchParams`, `useLocation` |
@@ -65,6 +65,7 @@ The React code moves almost as it is. What changes is everything Next does aroun
 | `tailwind.config.*` (Tailwind 3) | `@theme` in `frontend/src/index.css` (Tailwind 4). `globals.css` content goes there too |
 | shadcn/ui components | `frontend/src/components/ui/`, where the template keeps its own; keep the newer of any duplicate |
 | `next-auth` / Auth.js, Clerk | The chosen sign-in; drop the package |
+| Firebase's web library reading or writing data (`firebase/firestore`, `getDocs`, `setDoc`, `onSnapshot`, `firebase/storage` uploads) | Server routes that read and write through `gcp_services`, called from the page with TanStack Query. `gcp/firestore.rules` and `gcp/storage.rules` stay closed to the browser, as the template ships them. Firebase sign-in in the browser stays (customer accounts or a staff area). A live listener (`onSnapshot`) becomes a query that refetches on an interval |
 | Prisma, Drizzle, `pg`, Mongoose, Supabase client | Firestore through `gcp_services`; each table or collection becomes a Firestore collection and a Pydantic model. Drop the package and its schema files once the models exist |
 | `vercel.json`, `next.config.*`, `next-env.d.ts`, `.eslintrc` with `next` config | Drop. Redirects in `next.config` become routes |
 
@@ -77,6 +78,10 @@ Drop from `package.json`: `next`, `eslint-config-next`, `@next/*`, `@vercel/*`, 
 - **Vue, Svelte, Angular:** the components have to be rewritten in React. Move styles, assets, content and API calls as they are, and rebuild each component to match.
 - **Express, Nest or another Node server:** routes rewritten as FastAPI routes; business logic ported to Python next to them.
 
+## The database stays server-only
+
+The new project's database and file rules let nothing in from the browser; the server does every read and write. Moving an app whose page talks to its database directly means rewiring those calls through server routes (the Firebase row above), every time. It's not on the decision list. Only the person can change it, with a good reason, after the interview says what it risks; then the rules open exactly as far as that reason needs, and the hand-over says so.
+
 ## Needs a decision
 
 These change what the app does for its users, so the person chooses. Ask about each one the code has, one at a time, in plain words, with the recommended option first. Keep their answer in the move list; `create` follows it.
@@ -87,7 +92,7 @@ These change what the app does for its users, so the person chooses. Ask about e
 | Sign-in with existing accounts (NextAuth/Auth.js, Clerk, Auth0, Supabase Auth) | The accounts can't come across on their own | Public site with staff pages: **(a)** a staff area (question 5(b)): staff sign in with Google, the public pages stay open. Whole site for staff only: **(a)** Google sign-in in front of everything (5(c)). Customers who come back to their own things: **(a)** customer accounts (5(d)); people make a new account the first time, or whoever puts it online imports them. **(b)** Keep their current sign-in service, connected with a key |
 | Pages that must be found in search engines (a public blog, marketing pages, rendered on the server) | stackkit's page is built in the visitor's browser | **(a)** Keep them as normal pages; search engines read most of them, and it's simplest. **(b)** Keep the most important ones as plain pages in `frontend/public/` |
 | Live updates (websockets, live chat, server-sent events) | Only Cloud Run sends replies as they happen | **(a)** Host on Cloud Run (Google's web address). **(b)** Own web address; updates arrive when the page refreshes |
-| Scheduled jobs (Vercel cron, a worker, a queue) | stackkit doesn't run anything on a timer | **(a)** Move the job to a server route plus a make target; a timer at Google runs it once it's online. **(b)** Leave it out for now |
+| Scheduled jobs (Vercel cron, a worker, a queue) | stackkit's timer starts work, but doesn't run a queue | **(a)** Quick work: a server route plus a make target. Long work: a job in `job_service/jobs/` (`jobs`). A timer at Google runs either once it's online. **(b)** Leave it out for now |
 | Files kept elsewhere (S3, Cloudinary, Vercel Blob, UploadThing) | stackkit keeps files in Google's storage | **(a)** Use Google's storage; whoever puts it online copies the existing files across. **(b)** Keep their current service, connected with a key |
 | AI from another company (OpenAI, Mistral) | Claude and Gemini are built in with no key | **(a)** Switch to Claude or Gemini. **(b)** Keep theirs, connected with a key |
 | A Vue, Svelte or Angular page | stackkit's page is React | **(a)** Rebuild the screens in React, keeping content, styles and pictures (takes longer). **(b)** Move the content and pictures now, rebuild the screens after |

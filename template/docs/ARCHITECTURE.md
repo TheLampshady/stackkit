@@ -10,7 +10,7 @@ FastAPI backend with Firebase services (Auth, Firestore, Storage), Vertex AI for
 flowchart TD
     User[User]
     Frontend["React SPA (frontend/)"]
-    API["FastAPI Backend (service/)"]
+    API["FastAPI Backend (api_service/)"]
     Agents["ADK Agents (agent_service/)"]
     Auth[Firebase Auth]
     Firestore[Firestore DB]
@@ -32,30 +32,29 @@ flowchart TD
     Notebook -- "Cloud Ops" --> GCP
 ```
 
-The SPA is built into `service/static/` at deploy time, so in production the frontend and API are the same origin. In development `FRONT_END_URL` switches FastAPI into redirect mode and Vite proxies `/api` back to port 8000. The agents deploy separately and never route through the FastAPI service.
+The SPA is built into `api_service/static/` at deploy time, so in production the frontend and API are the same origin. In development `FRONT_END_URL` switches FastAPI into redirect mode and Vite proxies `/api` back to port 8000. The agents deploy separately and never route through the FastAPI service.
 
 ## Application Structure
 
 | Directory | Purpose |
 |-----------|---------|
-| `service/` | FastAPI backend (entry: `app.py`) |
-| `service/api/` | API routes (`router.py`) and app wiring (`config_app.py`) |
-| `service/gcp_services/` | GCP/Firebase service integrations — source of truth |
-| `service/gcp_services/clients/` | Pre-configured Firebase clients |
-| `service/tests/` | pytest test suite for the service |
+| `api_service/` | FastAPI backend (entry: `app.py`) |
+| `api_service/api/` | API routes (`router.py`) and app wiring (`config_app.py`) |
+| `*_service/gcp_services/` | Each service's own copy of the GCP/Firebase integrations and settings (see Service Boundaries) |
+| `*_service/gcp_services/clients/` | Pre-configured Firebase clients |
+| `api_service/tests/` | pytest test suite for the service |
 | `agent_service/` | Self-contained ADK deploy unit — own settings, own `gcp_services/` |
 | `agent_service/agents/` | Google ADK agent definitions |
-| `agent_service/gcp_services/` | Synced copy of `service/gcp_services/` (see Service Boundaries) |
+| `agent_service/gcp_services/` | The agents' own copy of the GCP/Firebase integrations |
 | `agent_service/tests/` | pytest test suite for the agents |
+| `job_service/` | Background jobs deploy unit (Cloud Run jobs): `main.py` runs one module from `jobs/` |
 | `frontend/` | React 19 SPA (Vite, Tailwind v4, shadcn/ui) |
 | `gcp/` | Emulator orchestration, Firestore rules/indexes, IAM scripts, `gcp` CLI |
 | `notebooks/` | ML experimentation with Vertex AI |
 
 ### Service Boundaries
 
-`service/` and `agent_service/` are separate uv workspace packages that deploy independently — the service to App Engine or Cloud Run, the agents to Agent Engine or Cloud Run. They share GCP integration code by **copy, not import**: `make sync-agents` rsyncs `service/gcp_services/` into `agent_service/gcp_services/`, excluding `clients/gcp_services.py` so the agents keep their own Firestore-only client override.
-
-The copy exists because each package installs its own dependency set and deploys from its own directory; a shared import would drag the service's FastAPI and Storage dependencies into every agent deploy. The cost is that `service/gcp_services/` is the only place to edit these files — changes made in `agent_service/gcp_services/` are overwritten on the next sync.
+Each `*_service/` folder is a separate uv workspace package that deploys independently: the server to App Engine or Cloud Run, the agents to Agent Engine or Cloud Run, background jobs to Cloud Run jobs. Each has its own copy of the GCP integration code in `gcp_services/`: they share it by **copy, not import**, because each package deploys from its own directory and installs its own dependency set; App Engine, Cloud Run and Agent Engine upload only that directory. Each copy belongs to its service. A change every service needs, such as a fix in `fb_auth.py`, goes in each copy.
 
 ## Data Model
 
@@ -111,12 +110,12 @@ sequenceDiagram
 
 | Module | Purpose | Location |
 |--------|---------|----------|
-| `gcp_services` | Firebase client factory | `service/gcp_services/clients/gcp_services.py` |
-| `app_settings` | Dual-mode configuration | `service/app_settings.py` |
-| `fb_auth` | Firebase Auth decorator and validation | `service/gcp_services/clients/fb_auth.py` |
-| `iap_auth` | IAP identity decorator and middleware | `service/gcp_services/clients/iap_auth.py` |
-| `config_app` | CORS, static mount, SPA fallback, warmup route | `service/api/config_app.py` |
-| `router` | API routes (prefix `/api`) | `service/api/router.py` |
+| `gcp_services` | Firebase client factory | `gcp_services/clients/gcp_services.py` |
+| `app_settings` | Dual-mode configuration | `api_service/app_settings.py` |
+| `fb_auth` | Firebase Auth decorator and validation | `gcp_services/clients/fb_auth.py` |
+| `iap_auth` | IAP identity decorator and middleware | `gcp_services/clients/iap_auth.py` |
+| `config_app` | CORS, static mount, SPA fallback, warmup route | `api_service/api/config_app.py` |
+| `router` | API routes (prefix `/api`) | `api_service/api/router.py` |
 | `agents` | ADK agent definitions | `agent_service/agents/` |
 | `deploy` | Agent Engine deployment | `agent_service/deploy.py` |
 | `cli` | GCP tooling CLI (Typer) | `gcp/cli.py`, commands in `gcp/commands/` |
@@ -135,7 +134,7 @@ from gcp_services.clients.gcp_services import db, bucket, auth_client
 
 ### Dual-Mode Configuration
 
-`app_settings.py` handles environment detection:
+Each service's `app_settings.py` adds its own fields to `CoreSettings` (`gcp_services/base_settings.py`, in each service's copy), which handles environment detection:
 
 - **Local**: Uses emulators when `USE_EMULATOR=true` in `.env`
 - **Cloud**: Auto-detects GCP via `K_SERVICE` or `GAE_INSTANCE` env vars
@@ -143,7 +142,7 @@ from gcp_services.clients.gcp_services import db, bucket, auth_client
 
 ### Authentication
 
-Two interchangeable options live in `service/gcp_services/clients/`. Both check the
+Two interchangeable options live in `gcp_services/clients/`. Both check the
 email against `settings.valid_domains` (`VALID_DOMAINS` env: domains or full
 addresses, default blank, which allows any account) and attach the caller to
 `request.state.user`.
@@ -172,7 +171,7 @@ deployed instances).
 
 ### API Routes
 
-All routes are registered on `api_router` in `service/api/router.py` under the `/api` prefix.
+All routes are registered on `api_router` in `api_service/api/router.py` under the `/api` prefix.
 
 | Route | Method | Auth | Purpose |
 |-------|--------|------|---------|
@@ -182,7 +181,7 @@ All routes are registered on `api_router` in `service/api/router.py` under the `
 | `/api/file-list/` | GET | none | Lists blob names in the Storage bucket |
 | `/api/db-list/` | GET | none | Lists Firestore collection IDs |
 
-Registered outside the router in `app.py` / `config_app.py`: `/api/docs`, `/api/redoc` and `/api/scalar` (API reference, schema at `/api/openapi.json`, all under the IAP-protected prefix), `/_ah/warmup` (App Engine warmup), and either a catch-all redirect to `FRONT_END_URL` or the SPA served from `service/static/` via FastAPI's `app.frontend()` (files served directly, `index.html` fallback for browser navigations, 404 otherwise).
+Registered outside the router in `app.py` / `config_app.py`: `/api/docs`, `/api/redoc` and `/api/scalar` (API reference, schema at `/api/openapi.json`, all under the IAP-protected prefix), `/_ah/warmup` (App Engine warmup), and either a catch-all redirect to `FRONT_END_URL` or the SPA served from `api_service/static/` via FastAPI's `app.frontend()` (files served directly, `index.html` fallback for browser navigations, 404 otherwise).
 
 ### ADK Agents
 
@@ -211,8 +210,8 @@ Must export `root_agent` in each agent module.
 | Dual-mode config | Environment detection | Seamless local/cloud development |
 | Firebase emulators | Local development | No cloud costs, offline capability |
 | ADK agents | Google ADK | Native GCP integration, Vertex AI support |
-| Agent packaging | Separate uv package, code synced by copy | Keeps FastAPI/Storage dependencies out of the agent deploy; the alternative — one package importing shared code — makes every agent deploy carry the whole service |
-| Frontend delivery | Built into `service/static/` | One deploy unit and same-origin requests in production; the alternative is a second hosting target plus CORS |
+| Service packaging | Separate uv package per service, shared code synced by copy | Each deploy uploads one folder with only its own dependencies; the alternative, one package importing shared code, makes every deploy carry every service |
+| Frontend delivery | Built into `api_service/static/` | One deploy unit and same-origin requests in production; the alternative is a second hosting target plus CORS |
 
 ## Related Documentation
 

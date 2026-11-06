@@ -115,7 +115,8 @@ def _verify_email(email: str, is_admin: bool = False) -> bool:
     """
     Performs checks on the email for access.
 
-    An empty ``VALID_DOMAINS`` list means no domain restriction.
+    ``VALID_DOMAINS`` holds domains (``example.com``) or full addresses
+    (``someone@gmail.com``); an empty list means no restriction.
 
     :param email: The caller's email address.
     :param is_admin: Whether the endpoint requires admin privileges.
@@ -125,7 +126,7 @@ def _verify_email(email: str, is_admin: bool = False) -> bool:
     local, sep, domain = email.rpartition("@")
     if not (sep and local and domain):
         return False
-    if VALID_DOMAINS and domain not in VALID_DOMAINS:
+    if VALID_DOMAINS and domain not in VALID_DOMAINS and email not in VALID_DOMAINS:
         return False
 
     return not is_admin
