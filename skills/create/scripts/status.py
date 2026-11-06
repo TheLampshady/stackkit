@@ -30,6 +30,7 @@ Usage::
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -691,13 +692,29 @@ def report(dest: Path, template: Path = TEMPLATE) -> dict:
     }
 
 
+def local_time_zone() -> str:
+    """The computer's time zone, for the interview to assume when a timer runs.
+
+    :return: An IANA name such as ``Europe/London``, or ``Etc/UTC`` when the
+        computer doesn't say
+    """
+    if "/" in (tz := os.environ.get("TZ", "").lstrip(":")):
+        return tz
+    target = os.path.realpath("/etc/localtime")
+    return target.split("zoneinfo/", 1)[1] if "zoneinfo/" in target else "Etc/UTC"
+
+
 def main() -> int:
     """Command-line entry point.
 
     :return: Process exit code
     """
     args = parse_args(sys.argv[1:])
-    summary = {"dest": str(args.dest.resolve()), **report(args.dest)}
+    summary = {
+        "dest": str(args.dest.resolve()),
+        "time_zone": local_time_zone(),
+        **report(args.dest),
+    }
     print(json.dumps(summary, indent=2))
     return 1 if "error" in summary else 0
 

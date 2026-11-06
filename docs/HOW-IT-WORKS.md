@@ -7,7 +7,7 @@ How the plugin turns a conversation into a project: the three skills, the script
 ```mermaid
 flowchart TD
     ask(["Person: set up, move or add to a project"]) --> boot
-    subgraph boot ["bootstrap skill: talks only"]
+    subgraph boot ["stackkit skill: talks only"]
         tools["Check uv, make, git<br/>ask before installing"] --> job{"What's in the folder?"}
         job -- "empty, or an idea" --> interview["Interview"]
         job -- "code that isn't stackkit" --> move["Read it, sort its parts,<br/>ask about each poor fit"] --> interview
@@ -31,7 +31,7 @@ flowchart TD
 
 | Skill | Who starts it | What it does | Commands it may run |
 |---|---|---|---|
-| [`bootstrap`](../skills/bootstrap/SKILL.md) | The person ("set up a new project") | Works out the job, interviews, agrees a plan. Never builds. | `status.py`, to tell a stackkit project from other code |
+| [`stackkit`](../skills/stackkit/SKILL.md) | The person ("set up a new project") | Works out the job, interviews, agrees a plan. Never builds. | `status.py`, to tell a stackkit project from other code |
 | [`create`](../skills/create/SKILL.md) | `bootstrap`, in the turn the plan is confirmed. Hidden from the `/` menu. | Builds, tidies, checks and hands over | `bootstrap.py`, `check.py`, and the file tools |
 | [`status`](../skills/status/SKILL.md) | The person, any time ("what's left to set up?") | Prints the checklist and cost estimate. Changes nothing. | `status.py` |
 
@@ -102,7 +102,7 @@ Each `*_service/` folder deploys on its own, so each keeps a copy of the Google 
 
 | Path | What |
 |---|---|
-| `skills/bootstrap/` | The interview (`SKILL.md`) and examples to offer when someone is stuck (`examples.md`) |
+| `skills/stackkit/` | The interview (`SKILL.md`) and examples to offer when someone is stuck (`examples.md`) |
 | `skills/create/` | The build (`SKILL.md`), its scripts, costs, the moving guide and the reactions guide |
 | `skills/status/` | The checklist and cost summary |
 | `template/` | The product: the runnable stack every project is copied from. Its own `AGENTS.md` covers working inside it. |

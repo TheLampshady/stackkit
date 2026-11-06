@@ -1,6 +1,6 @@
 # Cost guide
 
-What a stackkit project costs once it's online, part by part. The interview (`bootstrap`), the hand-over (`create`) and the `status` skill all read this; keep the numbers here and nowhere else.
+What a stackkit project costs once it's online, part by part. The interview (`stackkit`), the hand-over (`create`) and the `status` skill all read this; keep the numbers here and nowhere else.
 
 Monthly estimates for small use, from Google's published prices and free tiers (checked 2026-10-23; background work 2026-11-04). Free tiers are per Google Cloud project, so they shrink if the project is shared with other apps. They're estimates, never quotes.
 

@@ -30,7 +30,7 @@ Short, everyday cases for each answer. Offer two or three of the closest when th
 - **5d. Sign-in already set up**
   - Yes: "another app of ours already asks me to sign in with Google".
   - No, or not sure: the default.
-- **6. Uses AI**
+- **6. Users need AI to generate content**
   - Yes: write a summary of today's orders, draft replies to reviews, sort messages into "urgent" and "can wait", answer questions about your opening hours.
   - No: showing and saving information, forms, lists, totals and simple sums.
 - **6b. One job, or an assistant**
@@ -49,6 +49,10 @@ Short, everyday cases for each answer. Offer two or three of the closest when th
   - Yes: Stripe or Square for card payments, SendGrid or Mailgun for email, a weather or exchange-rate service, Twilio for text messages.
   - No: Claude or Gemini (no key needed, the project signs in itself), Google's own database and file storage (same), anything that needs no sign-up.
   - If they name an AI service from another company (like OpenAI), say that Claude and Gemini are built in and need no key, and ask if one of those will do. If they still want it, add its key as a secret.
+- **7d. Where the result goes** (nothing to open)
+  - (a) A file: "a spreadsheet of the week's sales I can download", "a PDF report kept for each month".
+  - (b) Something you use: "a new row in our Google Sheet", "a message in our Slack channel", "a card on our Trello board".
+  - (c) A page: "a page showing the latest report and the ones before it". That needs a server, so it costs a little more.
 - **8. Own web address**
   - Own: orders.mariasbakery.com, bookclub.org, a name you'd print on a menu or business card.
   - Google's: an address like bakery-orders-abc123.a.run.app, fine for a team tool or something only shared by link.
@@ -59,9 +63,9 @@ Short, everyday cases for each answer. Offer two or three of the closest when th
   - Cheapest: a staff tool used a few times a day, a sign-up form, anything where a few seconds' wait now and then won't matter.
   - Always ready: a checkout people might give up on, a booking page shared at a busy event, a tool used in front of customers.
   - The cap: "even if your post goes viral, it never runs more than two copies at once; it gets slower rather than more expensive".
-- **10. Name**
+- **10. Name** (assumed; for when they want to change it)
   - "Bakery Orders", "Book Club Signups", "Menu Site". Two or three plain words; it can change later.
-- **11. Folder**
+- **11. Folder** (assumed for a new project; for when they want to change it)
   - "Here is fine", or a place they'll remember, like a "Projects" folder in their home folder.
   - Moving a project: "a new folder next to it" if they want the old one left alone to compare; "turn this folder into it" if they want one folder to keep, with its history.
 - **12. Who puts it online**

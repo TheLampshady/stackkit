@@ -1,6 +1,6 @@
 # Moving code into stackkit
 
-How to fit existing code into a stackkit project: a whole project being moved onto stackkit, or a feature from another project being added to one. `bootstrap` reads this while it builds the move list and asks about what doesn't fit; `create` follows it while it moves the code.
+How to fit existing code into a stackkit project: a whole project being moved onto stackkit, or a feature from another project being added to one. The `stackkit` skill reads this while it builds the move list and asks about what doesn't fit; `create` follows it while it moves the code.
 
 ## The aim
 
@@ -65,6 +65,7 @@ The React code moves almost as it is. What changes is everything Next does aroun
 | `tailwind.config.*` (Tailwind 3) | `@theme` in `frontend/src/index.css` (Tailwind 4). `globals.css` content goes there too |
 | shadcn/ui components | `frontend/src/components/ui/`, where the template keeps its own; keep the newer of any duplicate |
 | `next-auth` / Auth.js, Clerk | The chosen sign-in; drop the package |
+| Firebase's web library reading or writing data (`firebase/firestore`, `getDocs`, `setDoc`, `onSnapshot`, `firebase/storage` uploads) | Server routes that read and write through `gcp_services`, called from the page with TanStack Query. `gcp/firestore.rules` and `gcp/storage.rules` stay closed to the browser, as the template ships them. Firebase sign-in in the browser stays (customer accounts or a staff area). A live listener (`onSnapshot`) becomes a query that refetches on an interval |
 | Prisma, Drizzle, `pg`, Mongoose, Supabase client | Firestore through `gcp_services`; each table or collection becomes a Firestore collection and a Pydantic model. Drop the package and its schema files once the models exist |
 | `vercel.json`, `next.config.*`, `next-env.d.ts`, `.eslintrc` with `next` config | Drop. Redirects in `next.config` become routes |
 
@@ -76,6 +77,10 @@ Drop from `package.json`: `next`, `eslint-config-next`, `@next/*`, `@vercel/*`, 
 - **Plain HTML, CSS and JavaScript:** each page becomes a component in `frontend/src/pages/`, its content word for word. Scripts become React code; CSS goes to `index.css`.
 - **Vue, Svelte, Angular:** the components have to be rewritten in React. Move styles, assets, content and API calls as they are, and rebuild each component to match.
 - **Express, Nest or another Node server:** routes rewritten as FastAPI routes; business logic ported to Python next to them.
+
+## The database stays server-only
+
+The new project's database and file rules let nothing in from the browser; the server does every read and write. Moving an app whose page talks to its database directly means rewiring those calls through server routes (the Firebase row above), every time. It's not on the decision list. Only the person can change it, with a good reason, after the interview says what it risks; then the rules open exactly as far as that reason needs, and the hand-over says so.
 
 ## Needs a decision
 

@@ -1,4 +1,4 @@
-# stackkit manifest: read by the stackkit bootstrap skill, deleted from every
+# stackkit manifest: read by stackkit's build script (bootstrap.py), deleted from every
 # project it creates. The template runs as-is without it.
 #
 # A module is removed by deleting its `paths`, dropping it from the uv
