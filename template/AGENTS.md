@@ -44,7 +44,8 @@ make deploy-agent-cr    # Sync + deploy to Cloud Run via adk deploy
 make sync               # Copy shared/gcp_services/ into each *_service/ (run/test/build/deploy do it first)
 make run-job JOB=example      # Run one background job here (job_service/jobs/example.py)
 make deploy-job JOB=example   # Put a job online as a Cloud Run job (no Docker)
-make schedule-job JOB=example SCHEDULE="0 6 * * *"  # Run a deployed job on a timer
+make schedule-job JOB=example SCHEDULE="0 6 * * *"  # Run a deployed job on a timer (or the timers in job_service/job_service.toml)
+make list-jobs                # What's online and on a timer; job_service/cli.py has more (run --payload, runs --active)
 
 # Cloud Setup (run once per project, or when secrets change)
 bash gcp/bin/setup_iam.sh   # Grant the server's service accounts their roles (reads PROJECT_ID from .env; needs Owner or Project IAM Admin)
@@ -73,6 +74,7 @@ bash gcp/bin/setup_iam.sh   # Grant the server's service accounts their roles (r
 - **Cloud**: Auto-detects GCP (via `K_SERVICE`, `GAE_INSTANCE` env vars), loads secrets from Secret Manager
 - Settings cascade: `.env` -> environment variables -> GCP defaults
 - **Namespace**: Set `NAMESPACE` env var to name GCP resources (Firestore DB name, Storage bucket as `{project_id}-{namespace}`)
+- **Shared base**: every service's `app_settings.py` subclasses `CoreSettings` from `shared/gcp_services/base_settings.py` and adds only its own fields (`SECRET_KEY_NAMES` stays in each `app_settings.py`)
 
 ### Firebase Client Access
 Always import pre-configured clients from `gcp_services.py`:

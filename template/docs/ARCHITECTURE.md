@@ -137,7 +137,7 @@ from gcp_services.clients.gcp_services import db, bucket, auth_client
 
 ### Dual-Mode Configuration
 
-`app_settings.py` handles environment detection:
+Each service's `app_settings.py` adds its own fields to the shared `CoreSettings` (`shared/gcp_services/base_settings.py`), which handles environment detection:
 
 - **Local**: Uses emulators when `USE_EMULATOR=true` in `.env`
 - **Cloud**: Auto-detects GCP via `K_SERVICE` or `GAE_INSTANCE` env vars

@@ -94,11 +94,14 @@ test-bootstrap: lint check-versions ## Lint, bootstrap sample projects (convert 
 	uv run --python 3.13 --no-project skills/create/scripts/bootstrap.py --dest $$legacy \
 		--add database > $$legacy-add.json || { cat $$legacy-add.json; exit 1; }; \
 	test ! -e $$legacy/api_service && test ! -e $$legacy/shared && test -f $$legacy/service/app.py \
-		&& grep -q firestore_db $$legacy/service/app_settings.py \
-		&& grep -q '"conflicts": \[\]' $$legacy-add.json \
-		|| { echo "   adding to an older project changed its layout or conflicted"; cat $$legacy-add.json; exit 1; }; \
+		&& ! grep -q firestore_db $$legacy/service/app_settings.py \
+		&& grep -q '"path": "service/app_settings.py"' $$legacy-add.json \
+		&& grep -q 'firestore_db_name' $$legacy-add.json \
+		&& test "$$(grep -c '"reason"' $$legacy-add.json)" = 1 \
+		|| { echo "   adding to an older project changed its layout, or didn't report its settings"; cat $$legacy-add.json; exit 1; }; \
+	sed -i '/^    namespace: str | None = /a\    firestore_db_name: str | None = os.environ.get("FIRESTORE_DB_NAME") or namespace\n    use_emulator: bool = env_var_as_bool("USE_EMULATOR", not IS_GCP)' $$legacy/service/app_settings.py; \
 	uv run --python 3.13 --no-project skills/create/scripts/check.py --dest $$legacy > $$legacy.json \
-		|| { cat $$legacy.json; exit 1; }; echo "   ✓ kept its layout, no conflicts, make check, make build"; \
+		|| { cat $$legacy.json; exit 1; }; echo "   ✓ kept its layout, reported its settings, make check, make build"; \
 	rm -rf $(SAMPLES)
 
 .PHONY: claude

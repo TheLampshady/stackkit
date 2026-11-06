@@ -29,8 +29,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ENV_FILE = PROJECT_ROOT / ".env"
 
 # stackkit:begin firebase
-# `provision` reads settings from the service package; make it importable too.
-sys.path.insert(0, str(PROJECT_ROOT / "api_service"))
+# `provision` reads the settings every service shares; make them importable too.
+sys.path.insert(0, str(PROJECT_ROOT / "shared"))
 
 from commands.provision import provision
 

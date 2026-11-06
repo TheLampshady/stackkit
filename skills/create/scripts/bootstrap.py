@@ -878,6 +878,30 @@ def add_modules(args: argparse.Namespace) -> dict:
             if status.predates(dest, folder):
                 shutil.rmtree(base / folder, ignore_errors=True)
                 shutil.rmtree(after / folder, ignore_errors=True)
+        # A project made before the shared settings keeps its own app_settings.py:
+        # leave it alone and report what the added modules put in the shared ones
+        for shared in sorted(base.glob("*/gcp_services/base_settings.py")):
+            rel = shared.relative_to(base)
+            settings_rel = Path(rel.parts[0]) / "app_settings.py"
+            if (dest / rel).exists() or not (dest / settings_rel).exists():
+                continue
+            if (after / rel).exists() and shared.read_bytes() != (
+                after / rel
+            ).read_bytes():
+                summary["conflicts"].append(
+                    {
+                        "path": str(settings_rel),
+                        "reason": (
+                            "made before the settings every service shares, so it was "
+                            "left as it is: add the fields in the diff (from "
+                            "gcp_services/base_settings.py) to its Settings class"
+                        ),
+                        "diff": unified(shared, after / rel, str(rel)),
+                    }
+                )
+            for stale in (rel, settings_rel):
+                (base / stale).unlink(missing_ok=True)
+                (after / stale).unlink(missing_ok=True)
         before_files = {p.relative_to(base) for p in base.rglob("*") if p.is_file()}
         after_files = {p.relative_to(after) for p in after.rglob("*") if p.is_file()}
 
