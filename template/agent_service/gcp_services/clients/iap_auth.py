@@ -1,15 +1,14 @@
 """
 Caller identity from Identity-Aware Proxy (IAP).
 
-An alternative to :mod:`fb_auth` for deployments fronted by IAP (Cloud Run with
-``--iap``, or App Engine behind IAP). IAP authenticates the browser session and
+For deployments fronted by IAP (Cloud Run with ``--iap``, or App Engine behind
+IAP). IAP authenticates the browser session and
 forwards a signed ``x-goog-iap-jwt-assertion`` header; this module verifies it
 and exposes the caller on ``request.state.user``.
 
 Two ways to apply it, matching the two styles already used in the service:
 
-- ``@iap_auth_required()`` protects a single endpoint, like
-  ``@firebase_auth_required()``.
+- ``@iap_auth_required()`` protects a single endpoint.
 - ``IdentityMiddleware`` protects every ``/api/`` path except the health check.
 
 Deployed (GCP): the assertion is verified against the service's IAP audience
@@ -95,6 +94,8 @@ def is_allowed_domain(email: str, valid_domains: list[str]) -> bool:
     """
     Checks the email's domain against the allow list.
 
+    Entries are domains (``example.com``) or full addresses (``someone@gmail.com``),
+    so a few people on personal accounts can be let in one by one.
     An empty allow list means no domain restriction: any email with a domain
     is accepted. Set ``VALID_DOMAINS=`` (blank) to opt into this.
 
@@ -105,7 +106,7 @@ def is_allowed_domain(email: str, valid_domains: list[str]) -> bool:
     local, sep, domain = email.rpartition("@")
     if not (sep and local and domain):
         return False
-    return not valid_domains or domain in valid_domains
+    return not valid_domains or domain in valid_domains or email in valid_domains
 
 
 def audience_from_region_path(region_path: str, service: str) -> str | None:
@@ -300,9 +301,8 @@ def resolve_request_identity(headers: Mapping[str, str]) -> Identity:
 
 def iap_auth_required() -> Callable[..., Any]:
     """
-    Decorator to secure FastAPI handlers with IAP, mirroring
-    ``@firebase_auth_required()``. Attaches an :class:`Identity` to
-    ``request.state.user``.
+    Decorator to secure FastAPI handlers with IAP. Attaches an
+    :class:`Identity` to ``request.state.user``.
 
     :return: The decorator.
     """

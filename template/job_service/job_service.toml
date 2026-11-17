@@ -1,0 +1,47 @@
+# How each job is put online, and when it runs. Only cli.py reads this file;
+# the jobs' own code never does (that's app_settings.py).
+#
+#   make deploy-job JOB=backfill     uses the job's settings below (ALL=1: every job)
+#   make schedule-job JOB=example    sets the timers listed for it (ALL=1: every timer)
+#
+# Google holds the real state. This file is what `deploy` and `schedule` push
+# there, so run them again after editing it. `make list-jobs` shows what's online.
+#
+# A flag on the command beats the job's table, which beats [defaults],
+# which beats the built-in values (60m, 1 retry, 1 task).
+
+[defaults]
+# timeout = "60m"          # a run is stopped after this (24h at most)
+# retries = 1              # tries again when a run fails
+# tasks = 1                # copies of the job running at once
+# cpu = "1"
+# memory = "512Mi"
+# The region is REGION in .env (default us-central1), as for the other services.
+
+# A job on a timer: runs every morning with its own input, read in the job with
+# jobs.payload(). Add more [[jobs.example.schedules]] blocks for more times; give
+# each a different `name`.
+[jobs.example]
+timeout = "10m"
+
+[[jobs.example.schedules]]
+cron = "0 6 * * *"
+time_zone = "Etc/UTC"
+payload = { db = "main" }
+
+# A job with no timer: start it by hand (make start-job JOB=backfill). It has
+# its own limits, because it may run long.
+[jobs.backfill]
+timeout = "6h"
+memory = "2Gi"
+
+# stackkit:begin ai
+# stackkit:begin storage
+# stackkit:begin database
+# A job that reads a file from storage and asks the model about it. No timer: start it
+# by hand with the file's name (make start-job JOB=summarize_file ARGS="--payload file=report.pdf").
+[jobs.summarize_file]
+timeout = "30m"
+# stackkit:end database
+# stackkit:end storage
+# stackkit:end ai

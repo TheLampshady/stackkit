@@ -40,7 +40,7 @@ repos:
         entry: bash -c "cd service && uv run ty check ."
         language: system
         pass_filenames: false
-        files: '^service/'
+        files: '^api_service/'
         types: [python]
 
       # stackkit:begin agents
@@ -63,7 +63,7 @@ repos:
         entry: bash -c "cd service && uv run pytest tests -q"
         language: system
         pass_filenames: false
-        files: '^service/'
+        files: '^api_service/'
         types: [python]
 
       # stackkit:begin agents

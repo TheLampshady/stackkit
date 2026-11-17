@@ -19,7 +19,7 @@ APP_DEPLOY := -C frontend deploy
 # stackkit:end gae
 
 # stackkit:begin api
-SERVICE_DIR=service
+SERVICE_DIR=api_service
 TYPECHECK_TARGETS += typecheck-be
 TEST_TARGETS += test-be
 CHECK_TARGETS += typecheck-be test-be
@@ -50,6 +50,15 @@ TEST_TARGETS += test-agents
 CHECK_TARGETS += check-agents
 # stackkit:end agents
 
+# stackkit:begin jobs
+JOBS_DIR=job_service
+# With no server or page, make run runs the example job
+RUN_TARGET ?= run-job
+TYPECHECK_TARGETS += typecheck-jobs
+TEST_TARGETS += test-jobs
+CHECK_TARGETS += check-jobs
+# stackkit:end jobs
+
 # ------ SETUP ------
 .PHONY: setup setup-be
 setup: $(SETUP_TARGETS)
@@ -58,6 +67,7 @@ setup-be:
 	@uv sync --all-extras --all-groups
 	@pre-commit install --config .config/.pre-commit-config.yaml
 	@git config --local commit.template .config/.commit-message-template
+
 
 # ------ RUN ------
 .PHONY: run
@@ -176,7 +186,7 @@ check-fe: lint-fe format-fe typecheck-fe test-fe
 
 # stackkit:begin agents
 # ------ AGENTS ------
-.PHONY: deploy-agent deploy-agent-cr adk-web adk-api sync-agents typecheck-agents test-agents check-agents
+.PHONY: deploy-agent deploy-agent-cr adk-web adk-api typecheck-agents test-agents check-agents
 deploy-agent:
 	$(MAKE) -C $(AGENTS_DIR) deploy-agent
 
@@ -189,9 +199,6 @@ adk-web:
 adk-api:
 	$(MAKE) -C $(AGENTS_DIR) adk-api
 
-sync-agents:
-	$(MAKE) -C $(AGENTS_DIR) sync-agents
-
 typecheck-agents:
 	cd ${AGENTS_DIR} && uv run --all-groups ty check .
 
@@ -200,3 +207,38 @@ test-agents:
 
 check-agents: typecheck-agents test-agents
 # stackkit:end agents
+
+# stackkit:begin jobs
+# ------ JOBS ------
+# Background work that runs, finishes and exits: make run-job JOB=example
+# Flags for job_service/cli.py go in ARGS: make start-job JOB=x ARGS="--payload db=zach"
+.PHONY: run-job deploy-job start-job schedule-job unschedule-job list-jobs job-runs typecheck-jobs test-jobs check-jobs
+run-job:
+	$(MAKE) -C $(JOBS_DIR) run
+
+deploy-job:
+	$(MAKE) -C $(JOBS_DIR) deploy
+
+start-job:
+	$(MAKE) -C $(JOBS_DIR) start
+
+schedule-job:
+	$(MAKE) -C $(JOBS_DIR) schedule
+
+unschedule-job:
+	$(MAKE) -C $(JOBS_DIR) unschedule
+
+list-jobs:
+	$(MAKE) -C $(JOBS_DIR) list
+
+job-runs:
+	$(MAKE) -C $(JOBS_DIR) runs
+
+typecheck-jobs:
+	cd ${JOBS_DIR} && uv run --all-groups ty check .
+
+test-jobs:
+	cd ${JOBS_DIR} && uv run --all-groups pytest tests
+
+check-jobs: typecheck-jobs test-jobs
+# stackkit:end jobs

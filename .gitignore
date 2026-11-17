@@ -114,6 +114,6 @@ cython_debug/
 
 # Template build and install outputs (never ship these in the plugin)
 node_modules/
-template/service/static/
+template/api_service/static/
 template/frontend/dist/
 .ruff_cache/

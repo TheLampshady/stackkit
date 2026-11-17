@@ -1,7 +1,8 @@
 """
 Create the environment's cloud resources.
 
-Names come from ``.env`` through the service settings:
+Names come from ``.env``, by the same rules as the services' settings and
+``gcp/Makefile``:
 stackkit:begin database
 the ``NAMESPACE`` Firestore database,
 stackkit:end database
@@ -16,6 +17,7 @@ Safe to rerun.
 """
 
 import logging
+import os
 import subprocess
 from dataclasses import dataclass
 from typing import Annotated
@@ -97,23 +99,33 @@ def provision(
         bool, typer.Option("--yes", help="Create missing resources without asking")
     ] = False,
 ) -> None:
-    """Create the project's cloud resources, skipping any that exist."""
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
-    from app_settings import settings
+    """
+    Create the project's cloud resources, skipping any that exist.
 
-    if not settings.project_id or not settings.namespace:
-        typer.echo("Set PROJECT_ID and NAMESPACE in .env first.")
+    Reads ``PROJECT_ID`` and ``NAMESPACE`` (and the optional name overrides)
+    from the environment, which ``gcp/cli.py`` has loaded from ``.env``.
+
+    :param yes: Create missing resources without asking
+    :raises typer.Exit: When the names are not set, the user declines, or a
+        create fails
+    :side effects: Creates the missing resources in the Google Cloud project
+    """
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    project_id = os.environ.get("PROJECT_ID", "")
+    namespace = os.environ.get("NAMESPACE", "")
+    if not project_id or not namespace:
+        typer.echo("Set PROJECT_ID and NAMESPACE in .env (or the --env-file) first.")
         raise typer.Exit(1)
 
     missing: list[Resource] = []
     database = bucket = ""
     # stackkit:begin database
-    database = settings.firestore_db_name or settings.namespace
+    database = os.environ.get("FIRESTORE_DB_NAME") or namespace
     # stackkit:end database
     # stackkit:begin storage
-    bucket = settings.firestore_bucket_name or ""
+    bucket = os.environ.get("FIRESTORE_BUCKET_NAME") or f"{project_id}-{namespace}"
     # stackkit:end storage
-    for resource in resources(settings.project_id, database, bucket):
+    for resource in resources(project_id, database, bucket):
         if gcloud(resource.describe).returncode == 0:
             typer.echo(f"{resource.label}: exists, skipped")
         else:
@@ -124,9 +136,7 @@ def provision(
         return
 
     names = ", ".join(r.label for r in missing)
-    if not yes and not typer.confirm(
-        f"Create {names} in {settings.project_id}?", default=False
-    ):
+    if not yes and not typer.confirm(f"Create {names} in {project_id}?", default=False):
         typer.echo("Nothing created.")
         raise typer.Exit(1)
 

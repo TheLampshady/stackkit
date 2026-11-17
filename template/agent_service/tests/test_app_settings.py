@@ -26,4 +26,3 @@ def test_settings_has_no_frontend_fields(mock_secrets):
     assert not hasattr(s, "static_dir")
     assert not hasattr(s, "front_end_url")
     assert not hasattr(s, "spa_asset_folder")
-    assert not hasattr(s, "firestore_bucket_name")

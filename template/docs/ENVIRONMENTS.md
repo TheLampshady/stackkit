@@ -90,7 +90,7 @@ Create `.env` from sample:
 cp .env.sample .env
 ```
 
-All of these are read in `service/app_settings.py` (and its twin in `agent_service/`).
+All of these are read in `gcp_services/base_settings.py`, which each service's `app_settings.py` builds on (`FRONT_END_URL` is only in `api_service/app_settings.py`).
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
@@ -168,13 +168,13 @@ Run all three configurations together using PyCharm's compound run configuration
 
 Cloud environment variables are:
 - Auto-detected: `K_SERVICE`, `GAE_INSTANCE`, `GAE_ENV`, `GOOGLE_CLOUD_PROJECT`
-- Declared in `service/app.yaml` under `env_variables`
+- Declared in `api_service/app.yaml` under `env_variables`
 - Loaded from Secret Manager at startup when `IS_GCP` is true
 
 | Variable | Source |
 |----------|--------|
 | `PROJECT_ID` | Auto-detected from `GOOGLE_CLOUD_PROJECT` |
-| `NAMESPACE` | `service/app.yaml` `env_variables` (interpolated from `.env` at deploy time) |
+| `NAMESPACE` | `api_service/app.yaml` `env_variables` (interpolated from `.env` at deploy time) |
 | `GOOGLE_CLOUD_LOCATION` | Environment / Default: `us-central1` |
 
 ### Google Cloud Access
@@ -284,7 +284,7 @@ make deploy-cr    # Cloud Run
 
 **Method**: GCP Secret Manager, loaded into `os.environ` at startup by `load_secrets()` — and only when running on GCP (`IS_GCP`). Locally, the same values go in `.env`; nothing is fetched.
 
-The list of secrets to load is `SECRET_KEY_NAMES` in `service/app_settings.py`. It currently holds the placeholder `["TODO"]` — no real secret is wired up yet.
+The list of secrets to load is `SECRET_KEY_NAMES` in each service's `app_settings.py` (`api_service/`, `agent_service/`, `job_service/`). It currently holds the placeholder `["TODO"]` — no real secret is wired up yet.
 
 ### Adding New Secrets
 
@@ -294,7 +294,7 @@ The list of secrets to load is `SECRET_KEY_NAMES` in `service/app_settings.py`. 
    echo -n "secret-value" | gcloud secrets versions add SECRET_NAME --data-file=-
    ```
 
-2. Add the name to `SECRET_KEY_NAMES` in `service/app_settings.py`.
+2. Add the name to `SECRET_KEY_NAMES` in the `app_settings.py` of each service that reads it.
 
 3. Add the same name to the `SECRETS` array in `gcp/bin/setup_iam.sh` and re-run it — the server's service account has no access to a new secret until you do.
 

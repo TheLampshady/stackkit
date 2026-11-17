@@ -5,8 +5,9 @@ from .gcp_logging import setup_logging
 
 logger = logging.getLogger(__name__)
 
-# This works for cloud run (which is also Agent Engine)
-IS_CLOUD_RUN = bool(os.getenv("K_SERVICE"))
+# Cloud Run services (and Agent Engine) set K_SERVICE; Cloud Run jobs set
+# CLOUD_RUN_JOB instead
+IS_CLOUD_RUN = bool(os.getenv("K_SERVICE") or os.getenv("CLOUD_RUN_JOB"))
 IS_GAE = bool(os.getenv("GAE_INSTANCE") or os.getenv("GAE_ENV"))
 IS_GCP = IS_GAE or IS_CLOUD_RUN or bool(os.getenv("IS_GCP"))
 

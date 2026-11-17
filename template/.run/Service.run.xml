@@ -1,12 +1,12 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Service" type="Python.FastAPI">
-    <option name="file" value="$PROJECT_DIR$/service/app.py" />
+    <option name="file" value="$PROJECT_DIR$/api_service/app.py" />
     <module name="stackkit-app" />
     <option name="ENV_FILES" value="" />
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
     <option name="SDK_HOME" value="" />
-    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/service" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/api_service" />
     <option name="IS_MODULE_SDK" value="true" />
     <option name="ADD_CONTENT_ROOTS" value="true" />
     <option name="ADD_SOURCE_ROOTS" value="true" />

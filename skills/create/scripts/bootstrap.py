@@ -145,8 +145,9 @@ def resolve_removals(manifest: dict, requested: list[str]) -> list[str]:
     """Work out the full set of modules to remove and check it's buildable.
 
     An ``implicit`` module is removed on its own once no kept module
-    ``requires`` it. Every kept module's ``requires`` must be kept, and each
-    ``keep_one_of`` group must keep at least one module.
+    ``requires`` it. Every kept module's ``requires`` must be kept, at least
+    one of its ``requires_any``, and each ``keep_one_of`` group must keep at
+    least one module.
 
     :param manifest: The template manifest
     :param requested: Modules asked to be removed
@@ -173,7 +174,16 @@ def resolve_removals(manifest: dict, requested: list[str]) -> list[str]:
         missing = sorted(set(modules[name].get("requires", [])) & removed)
         if missing:
             raise BootstrapError(f"{name} needs {', '.join(missing)}, which is removed")
+        if (any_of := modules[name].get("requires_any")) and not kept & set(any_of):
+            raise BootstrapError(
+                f"{name} needs one of {', '.join(any_of)}, and all are removed"
+            )
     for group in manifest.get("rules", {}).get("keep_one_of", []):
+        # A group is a list, or a table that applies only when_kept has a kept module
+        if isinstance(group, dict):
+            if not kept & set(group.get("when_kept", group["modules"])):
+                continue
+            group = group["modules"]
         if not kept & set(group):
             raise BootstrapError(f"Keep at least one of {', '.join(group)}")
     return [m for m in modules if m in removed]
@@ -195,7 +205,7 @@ def kept_folders(template: Path, manifest: dict, removed: list[str]) -> set[str]
     :param template: Template root
     :param manifest: The template manifest
     :param removed: Modules being removed
-    :return: Folder names, such as ``frontend`` and ``service``
+    :return: Folder names, such as ``frontend`` and ``api_service``
     """
     gone = {
         p
@@ -334,16 +344,19 @@ def carry_over(dest: Path, copies: list[tuple[Path, Path]]) -> None:
 def remove_paths(dest: Path, module: dict) -> None:
     """Delete a module's folders and files.
 
+    A ``gcp_services/`` path goes from every service's copy
+    (``api_service/gcp_services/...``, ``job_service/gcp_services/...``).
+
     :param dest: Project root
     :param module: The module's manifest entry
     :side effects: Deletes files under ``dest``
     """
     for rel in module.get("paths", []):
-        target = dest / rel
-        if target.is_dir():
-            shutil.rmtree(target)
-        elif target.exists():
-            target.unlink()
+        for target in status.manifest_paths(dest, rel):
+            if target.is_dir():
+                shutil.rmtree(target)
+            elif target.exists():
+                target.unlink()
 
 
 def remove_json_keys(dest: Path, module: dict) -> None:
@@ -765,6 +778,66 @@ def add_env_keys(dest: Path, sample: Path, env: dict[str, str]) -> list[str]:
     return added
 
 
+def copy_clients(dest: Path, gained: list[str]) -> dict[str, str]:
+    """Give each new service the project's own copy of the Google clients.
+
+    Each service keeps its own ``gcp_services/``, and the person may have
+    changed theirs. A new service starts from the server's copy (or another
+    service's), over the template's, so it has their changes; files only the
+    template has, such as a part just added, stay.
+
+    :param dest: Project root
+    :param gained: Folders of the services just added, such as ``job_service``
+    :return: Each new service, and the service its clients came from
+    :side effects: Overwrites files in each new service's ``gcp_services/``
+    """
+    sources = [
+        c
+        for c in status.service_copies(dest, status.COPIES)
+        if c.is_dir() and c.parent.name not in gained
+    ]
+    # The server's copy first, under either of its names
+    server = ("api_service", *status.RENAMED.values())
+    sources.sort(key=lambda c: c.parent.name not in server)
+    if not sources:
+        return {}
+    source = sources[0]
+    for name in gained:
+        for file in source.rglob("*"):
+            if file.is_file() and "__pycache__" not in file.parts:
+                target = dest / name / status.COPIES / file.relative_to(source)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(file, target)
+    return {name: source.parent.name for name in gained}
+
+
+def use_old_names(tree: Path, legacy: dict[str, str]) -> None:
+    """Rewrite a rendered template into a project's pre-rename layout.
+
+    Projects made before the template renamed a folder keep its old name.
+    Renaming the folder and its mentions in the rendered copies lets the
+    three-way merge compare like with like.
+
+    :param tree: A rendered template
+    :param legacy: New folder name to old, from ``status.legacy_dirs``
+    :side effects: Moves folders and rewrites text files in ``tree``
+    """
+    for new, old in legacy.items():
+        if (tree / new).is_dir():
+            (tree / new).rename(tree / old)
+        package = new.replace("_", "-")
+        for path in tree.rglob("*"):
+            if not path.is_file():
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            fixed = text.replace(new, old).replace(package, old)
+            if fixed != text:
+                path.write_text(fixed, encoding="utf-8")
+
+
 def add_modules(args: argparse.Namespace) -> dict:
     """Add modules to an existing stackkit project.
 
@@ -803,9 +876,12 @@ def add_modules(args: argparse.Namespace) -> dict:
         )
     values = project_values(dest, manifest, args.name, args.display_name)
     env = parse_env(args.env, manifest["env"]["keys"])
-    copies = parse_copies(
-        args.copy, dest, kept_folders(args.template, manifest, remove_after), False
-    )
+    # A project made before a folder rename keeps the old name; copies go there
+    legacy = status.legacy_dirs(dest)
+    folders = {
+        legacy.get(f, f) for f in kept_folders(args.template, manifest, remove_after)
+    }
+    copies = parse_copies(args.copy, dest, folders, False)
 
     summary = {
         "dest": str(dest.resolve()),
@@ -816,11 +892,45 @@ def add_modules(args: argparse.Namespace) -> dict:
         "merged": [],
         "removed_files": [],
         "conflicts": [],
+        "clients_from": {},
     }
     with tempfile.TemporaryDirectory() as tmp:
         base, after = Path(tmp) / "base", Path(tmp) / "after"
         render(args.template, base, manifest, remove_before, values)
         render(args.template, after, manifest, remove_after, values)
+        if legacy:
+            use_old_names(base, legacy)
+            use_old_names(after, legacy)
+        # A project made before the shared settings keeps its own app_settings.py:
+        # leave it alone and report what the added modules put in the shared ones
+        for shared in sorted(base.glob("*/gcp_services/base_settings.py")):
+            rel = shared.relative_to(base)
+            settings_rel = Path(rel.parts[0]) / "app_settings.py"
+            if (dest / rel).exists() or not (dest / settings_rel).exists():
+                continue
+            if (after / rel).exists() and shared.read_bytes() != (
+                after / rel
+            ).read_bytes():
+                summary["conflicts"].append(
+                    {
+                        "path": str(settings_rel),
+                        "reason": (
+                            "made before the settings every service shares, so it was "
+                            "left as it is: add the fields in the diff (from "
+                            "gcp_services/base_settings.py) to its Settings class"
+                        ),
+                        "diff": unified(shared, after / rel, str(rel)),
+                    }
+                )
+            for stale in (rel, settings_rel):
+                (base / stale).unlink(missing_ok=True)
+                (after / stale).unlink(missing_ok=True)
+        # Services the project gains, which take their Google clients from it
+        gained = [
+            d.name
+            for d in sorted(after.iterdir())
+            if (d / status.COPIES).is_dir() and not (dest / d.name).exists()
+        ]
         before_files = {p.relative_to(base) for p in base.rglob("*") if p.is_file()}
         after_files = {p.relative_to(after) for p in after.rglob("*") if p.is_file()}
 
@@ -876,6 +986,7 @@ def add_modules(args: argparse.Namespace) -> dict:
                         "reason": "no longer used, but the project changed it; delete it once its changes are moved",
                     }
                 )
+        summary["clients_from"] = copy_clients(dest, gained)
         summary["env_added"] = add_env_keys(dest, after / ".env.sample", env)
     carry_over(dest, copies)
     summary["carried"] = [str(rel) for _, rel in copies]

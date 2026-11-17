@@ -28,10 +28,14 @@
 # account (datastore.user, aiplatform.user), on Agent Engine as its Reasoning
 # Engine service agent (datastore.user; its own role covers Vertex AI).
 # stackkit:end agents
-# stackkit:begin cloud_run,agents
+# stackkit:begin jobs
+# Background jobs run as the Compute Engine default account, which also gets
+# run.invoker: Google's timer starts scheduled jobs as it.
+# stackkit:end jobs
+# stackkit:begin cloud_run,agents,jobs
 # And the Compute Engine default account, which builds Cloud Run source
 # deploys, gets run.builder (without it, deploying fails with a permission error).
-# stackkit:end cloud_run,agents
+# stackkit:end cloud_run,agents,jobs
 # ----------------------------------------- #
 
 set -euo pipefail
@@ -52,10 +56,10 @@ if [[ -z "$PROJECT_ID" ]]; then
   exit 1
 fi
 
-# stackkit:begin cloud_run,agents
+# stackkit:begin cloud_run,agents,jobs
 PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
 COMPUTE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-# stackkit:end cloud_run,agents
+# stackkit:end cloud_run,agents,jobs
 RUNTIME_ACCOUNTS=()
 # stackkit:begin gae
 RUNTIME_ACCOUNTS+=("${PROJECT_ID}@appspot.gserviceaccount.com")
@@ -63,6 +67,11 @@ RUNTIME_ACCOUNTS+=("${PROJECT_ID}@appspot.gserviceaccount.com")
 # stackkit:begin cloud_run
 RUNTIME_ACCOUNTS+=("$COMPUTE_ACCOUNT")
 # stackkit:end cloud_run
+# stackkit:begin jobs
+if [[ " ${RUNTIME_ACCOUNTS[*]-} " != *" $COMPUTE_ACCOUNT "* ]]; then
+  RUNTIME_ACCOUNTS+=("$COMPUTE_ACCOUNT")
+fi
+# stackkit:end jobs
 
 grant_project_role() {
   echo "Granting $2 to $1..."
@@ -78,7 +87,7 @@ echo "Accounts: ${RUNTIME_ACCOUNTS[*]}"
 echo ""
 
 # --- Secret Manager access ---
-# Same names as SECRET_KEY_NAMES in service/app_settings.py
+# Same names as SECRET_KEY_NAMES in each *_service/app_settings.py
 SECRETS=()
 
 if [[ ${#SECRETS[@]} -eq 0 ]]; then
@@ -126,11 +135,16 @@ grant_project_role "$AGENT_ENGINE_ACCOUNT" roles/datastore.user \
   || echo "Skipped $AGENT_ENGINE_ACCOUNT: run make deploy-agent once, then rerun this script."
 # stackkit:end agents
 
-# stackkit:begin cloud_run,agents
+# stackkit:begin jobs
+# --- Google's timer starts scheduled jobs as the Compute Engine default account ---
+grant_project_role "$COMPUTE_ACCOUNT" roles/run.invoker
+# stackkit:end jobs
+
+# stackkit:begin cloud_run,agents,jobs
 # --- Cloud Run source deploys build as the Compute Engine default account ---
 grant_project_role "$COMPUTE_ACCOUNT" roles/run.builder
 echo "(New roles take a couple of minutes to apply before the first deploy.)"
-# stackkit:end cloud_run,agents
+# stackkit:end cloud_run,agents,jobs
 
 echo ""
 echo "Done. All IAM roles granted."

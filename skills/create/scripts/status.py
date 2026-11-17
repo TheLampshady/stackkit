@@ -30,6 +30,7 @@ Usage::
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -69,13 +70,70 @@ INSTALL = {
 PROVISION = "make -C gcp provision"
 SETUP_IAM = "make -C gcp setup-iam"
 
+# Folders the template renamed: new name, then the name projects made before
+# the rename still have. Every path the manifest names goes through
+# ``project_path``, so both layouts are read the same way.
+RENAMED = {"api_service": "service"}
+# A manifest path starting with this names that file in every service's copy
+COPIES = "gcp_services"
+
+
+def legacy_dirs(dest: Path) -> dict[str, str]:
+    """Find the renamed folders this project still has under their old name.
+
+    :param dest: Project root
+    :return: New name to old name, for each folder only the old name exists for
+    """
+    return {
+        new: old
+        for new, old in RENAMED.items()
+        if not (dest / new).exists() and (dest / old).is_dir()
+    }
+
+
+def project_path(dest: Path, rel: str) -> Path:
+    """Resolve a template path in a project made by any version of stackkit.
+
+    :param dest: Project root
+    :param rel: Path as the template names it, such as ``api_service/app.yaml``
+    :return: Where that path is in this project, under a renamed folder's old
+        name if it still has it
+    """
+    first, _, rest = rel.partition("/")
+    old = legacy_dirs(dest).get(first)
+    return dest / (f"{old}/{rest}" if old and rest else old or rel)
+
+
+def service_copies(dest: Path, rel: str) -> list[Path]:
+    """Every service's copy of a ``gcp_services/`` file the manifest names.
+
+    :param dest: Project root
+    :param rel: Such as ``gcp_services/clients/fb_auth.py``
+    :return: That file in each folder with a ``gcp_services/`` (``api_service``,
+        ``job_service``, an older project's ``service``), whether or not it's there
+    """
+    return [d / rel for d in sorted(dest.iterdir()) if (d / COPIES).is_dir()]
+
+
+def manifest_paths(dest: Path, rel: str) -> list[Path]:
+    """Where a path the manifest names is in this project.
+
+    :param dest: Project root
+    :param rel: A manifest path
+    :return: Every service's copy for a ``gcp_services/`` path, else the one path
+    """
+    if rel.split("/", 1)[0] == COPIES:
+        return service_copies(dest, rel)
+    return [project_path(dest, rel)]
+
+
 # Google Cloud steps: (what, needed when the project has, permission tested,
 # roles that allow it for someone who isn't the project's Owner). Roles from
 # Google's docs for Cloud Run source deploys and App Engine deploys.
 ACCESS_STEPS = [
     (
-        f"grant the server's accounts their roles ({SETUP_IAM})",
-        "api",
+        f"grant the server's and jobs' accounts their roles ({SETUP_IAM})",
+        "iam",
         "resourcemanager.projects.setIamPolicy",
         ["roles/resourcemanager.projectIamAdmin"],
     ),
@@ -93,7 +151,7 @@ ACCESS_STEPS = [
     ),
     (
         "add keys to Secret Manager",
-        "api",
+        "iam",
         "secretmanager.secrets.create",
         ["roles/secretmanager.admin"],
     ),
@@ -107,6 +165,17 @@ ACCESS_STEPS = [
             "roles/iam.serviceAccountUser",
             # Only Cloud Run Admin can make a service public (no team sign-in)
             "roles/run.admin",
+        ],
+    ),
+    (
+        "put background jobs online and on a timer (make deploy-job, make schedule-job)",
+        "jobs",
+        "run.jobs.create",
+        [
+            "roles/run.sourceDeveloper",
+            "roles/serviceusage.serviceUsageConsumer",
+            "roles/iam.serviceAccountUser",
+            "roles/cloudscheduler.admin",
         ],
     ),
     (
@@ -124,6 +193,8 @@ ACCESS_STEPS = [
 # Cloud Run source deploys build as the Compute Engine default account, which
 # needs this role; newer projects don't give it Editor, which used to cover it.
 BUILD_ROLES = {"roles/run.builder", "roles/editor"}
+# Parts deployed by a Cloud Run source build
+BUILDS_ON_CLOUD_RUN = {"cloud_run", "jobs"}
 TEST_PERMISSIONS = (
     "https://cloudresourcemanager.googleapis.com/v1/projects/{project}"
     ":testIamPermissions"
@@ -198,7 +269,7 @@ def kept_parts(dest: Path, manifest: dict) -> list[str]:
     kept = []
     for name, module in manifest["modules"].items():
         if paths := module.get("paths"):
-            if any((dest / p).exists() for p in paths):
+            if any(f.exists() for p in paths for f in manifest_paths(dest, p)):
                 kept.append(name)
             continue
         if code is None:
@@ -323,8 +394,10 @@ def secret_names(dest: Path) -> list[str]:
     :return: Names in order, without the template's ``TODO`` placeholder
     """
     names = []
-    for settings in ("service/app_settings.py", "agent_service/app_settings.py"):
-        path = dest / settings
+    # Every service's settings, and the server's from before it was api_service/
+    paths = sorted(dest.glob("*_service/app_settings.py"))
+    paths += [dest / old / "app_settings.py" for old in RENAMED.values()]
+    for path in paths:
         if path.is_file() and (match := SECRETS_RE.search(path.read_text())):
             for name in re.findall(r"[\"']([A-Z0-9_]+)[\"']", match.group(1)):
                 if name != "TODO" and name not in names:
@@ -425,7 +498,7 @@ def scaling_report(dest: Path, parts: list[str]) -> list[dict]:
     if "api" not in parts:
         return []
     hosts = []
-    makefile = dest / "service" / "Makefile"
+    makefile = project_path(dest, "api_service/Makefile")
     if "cloud_run" in parts and makefile.is_file():
         text = makefile.read_text()
         hosts.append(
@@ -433,10 +506,10 @@ def scaling_report(dest: Path, parts: list[str]) -> list[dict]:
                 "host": "cloud_run",
                 "min": instances(text, "min") or 0,
                 "max": instances(text, "max"),
-                "file": "service/Makefile",
+                "file": str(makefile.relative_to(dest)),
             }
         )
-    app_yaml = dest / "service" / "app.yaml"
+    app_yaml = project_path(dest, "api_service/app.yaml")
     if "gae" in parts and app_yaml.is_file():
         text = app_yaml.read_text()
         hosts.append(
@@ -444,7 +517,7 @@ def scaling_report(dest: Path, parts: list[str]) -> list[dict]:
                 "host": "gae",
                 "min": instances(text, "min") or 0,
                 "max": instances(text, "max"),
-                "file": "service/app.yaml",
+                "file": str(app_yaml.relative_to(dest)),
             }
         )
     return hosts
@@ -562,9 +635,9 @@ def access_report(parts: list[str], env: dict[str, str]) -> dict:
             result["checked"] = True
             for step in steps:
                 step["can"] = step["permission"] in held
-        if "cloud_run" in parts:
+        if BUILDS_ON_CLOUD_RUN & set(parts):
             result["build_account"] = build_account(project)
-    if "cloud_run" in parts and "build_account" not in result:
+    if BUILDS_ON_CLOUD_RUN & set(parts) and "build_account" not in result:
         result["build_account"] = {
             "account": None,
             "role": "roles/run.builder",
@@ -624,13 +697,29 @@ def report(dest: Path, template: Path = TEMPLATE) -> dict:
     }
 
 
+def local_time_zone() -> str:
+    """The computer's time zone, for the interview to assume when a timer runs.
+
+    :return: An IANA name such as ``Europe/London``, or ``Etc/UTC`` when the
+        computer doesn't say
+    """
+    if "/" in (tz := os.environ.get("TZ", "").lstrip(":")):
+        return tz
+    target = os.path.realpath("/etc/localtime")
+    return target.split("zoneinfo/", 1)[1] if "zoneinfo/" in target else "Etc/UTC"
+
+
 def main() -> int:
     """Command-line entry point.
 
     :return: Process exit code
     """
     args = parse_args(sys.argv[1:])
-    summary = {"dest": str(args.dest.resolve()), **report(args.dest)}
+    summary = {
+        "dest": str(args.dest.resolve()),
+        "time_zone": local_time_zone(),
+        **report(args.dest),
+    }
     print(json.dumps(summary, indent=2))
     return 1 if "error" in summary else 0
 

@@ -27,7 +27,7 @@ cp .env.sample .env
 # Set PROJECT_ID and NAMESPACE, then choose USE_EMULATOR
 ```
 
-Deployed instances load their secrets from Secret Manager at startup (`SECRET_KEY_NAMES` in `service/app_settings.py`). Locally, put the same values in `.env` — there is no pull step.
+Deployed instances load their secrets from Secret Manager at startup (`SECRET_KEY_NAMES` in each `*_service/app_settings.py`). Locally, put the same values in `.env` — there is no pull step.
 
 > **Need help?** See [Environment Setup](./docs/ENVIRONMENTS.md) for detailed configuration including GCloud CLI setup and Firebase initialization.
 
@@ -40,7 +40,7 @@ make emulator  # Terminal 1: Start Firebase emulators
 make run       # Terminal 2: Start FastAPI server
 ```
 
-`make run` branches on `FRONT_END_URL`: set it (e.g. `http://localhost:5173`) and the Vite dev server runs alongside the API with FastAPI redirecting to it; leave it unset and the frontend is built into `service/static/` and served by FastAPI itself.
+`make run` branches on `FRONT_END_URL`: set it (e.g. `http://localhost:5173`) and the Vite dev server runs alongside the API with FastAPI redirecting to it; leave it unset and the frontend is built into `api_service/static/` and served by FastAPI itself.
 
 **Local URLs**:
 - **API**: http://localhost:8000 — FastAPI backend with auto-generated docs at `/api/docs` and `/api/scalar`
@@ -62,10 +62,10 @@ Daily development commands. All commands use `make` targets defined in the root 
 | `make check` | Run full quality suite: lint → format → typecheck → test (backend + frontend) |
 | `make lint` | ruff `--fix` on Python, ESLint on the frontend |
 | `make format` | ruff formatter |
-| `make typecheck` | `ty` on `service/` and `agent_service/`, `tsc -b` on the frontend |
-| `make test` | pytest for `service/` and `agent_service/`, Vitest for the frontend |
+| `make typecheck` | `ty` on `api_service/` and `agent_service/`, `tsc -b` on the frontend |
+| `make test` | pytest for `api_service/` and `agent_service/`, Vitest for the frontend |
 | `make hooks` | Run pre-commit across all files |
-| `make build` | Build the frontend and copy `frontend/dist/` into `service/static/` |
+| `make build` | Build the frontend and copy `frontend/dist/` into `api_service/static/` |
 | `make deploy-app` | Build, then deploy the service to App Engine |
 | `make deploy-cr` | Build, then deploy the service to Cloud Run |
 
@@ -74,9 +74,20 @@ Daily development commands. All commands use `make` targets defined in the root 
 | Command | Description |
 |---------|-------------|
 | `make adk-web` / `make adk-api` | Run the ADK web UI / API server against `agent_service/agents/` |
-| `make sync-agents` | Copy `service/gcp_services/` into `agent_service/` (service is the source of truth) |
 | `make deploy-agent` | Deploy to Agent Engine via `agent_service/deploy.py` |
 | `make deploy-agent-cr` | Deploy the agents to Cloud Run via `adk deploy` |
+
+**Jobs** — background work in `job_service/jobs/` that runs, finishes and exits (see `job_service/Readme.md`):
+
+| Command | Description |
+|---------|-------------|
+| `make run-job JOB=<name>` | Run a job on this computer |
+| `make deploy-job JOB=<name>` | Put a job online as a Cloud Run job, built from source |
+| `make start-job JOB=<name>` | Run the online job once, now |
+| `make schedule-job JOB=<name>` | Run the online job on a timer (`SCHEDULE`, `TIME_ZONE`, or the timers in `job_service/job_service.toml`) |
+| `make unschedule-job JOB=<name>` | Take the job off its timer |
+| `make list-jobs` | Which jobs are online and on a timer |
+| `make job-runs JOB=<name>` | List the job's recent runs (`ALL=1`: every job that's online) |
 
 Every `-be` / `-fe` variant of the quality targets can be run on its own (`make lint-fe`, `make test-be`, …). Infrastructure targets — Firestore rules, indexes, bucket CORS, IAM, the `gcp` CLI — live in `gcp/Makefile`; see the [Cloud Guide](./docs/CLOUD.md).
 
@@ -89,14 +100,14 @@ The project uses a modern Python backend with Google Cloud services for auth, da
 | Layer | Technology | Purpose |
 |-------|------------|---------|
 | **Backend** | FastAPI + Gunicorn | Async API framework with production WSGI server |
-| **Frontend** | React 19 + Vite + Tailwind v4 + shadcn/ui | SPA built to `service/static/`, served by FastAPI |
+| **Frontend** | React 19 + Vite + Tailwind v4 + shadcn/ui | SPA built to `api_service/static/`, served by FastAPI |
 | **Authentication** | Firebase Auth | User management, JWT tokens, domain whitelisting |
 | **Database** | Firestore | NoSQL document database with real-time sync |
 | **Storage** | Cloud Storage | File uploads and static asset hosting |
 | **AI/ML** | Vertex AI + Google ADK | Model inference and agent orchestration |
 | **Secrets** | Secret Manager | Secure credential storage |
 | **Deployment** | App Engine, Cloud Run, Agent Engine | Managed serverless hosting for the service and the agents |
-| **Packaging** | uv workspace | Python packages — `service`, `agents`, `gcp`, `notebooks` — under one lockfile |
+| **Packaging** | uv workspace | Python packages — `api_service`, `agent_service`, `gcp`, `notebooks` — under one lockfile |
 
 ---
 
@@ -104,17 +115,17 @@ The project uses a modern Python backend with Google Cloud services for auth, da
 
 Each folder serves a specific purpose in the development and deployment workflow.
 
-The repo is a uv workspace: `service/`, `agent_service/`, `gcp/` and `notebooks/` are each a package with its own `pyproject.toml` and `Makefile`, sharing the root lockfile.
+The repo is a uv workspace: `api_service/`, `agent_service/`, `gcp/` and `notebooks/` are each a package with its own `pyproject.toml` and `Makefile`, sharing the root lockfile.
 
 | Folder | Purpose |
 |--------|---------|
-| `service/` | **Main application** — FastAPI backend (entry: `app.py`), API routes, GCP clients, tests |
-| `service/api/` | Route definitions (`router.py`) and app wiring — CORS, static mount, SPA fallback (`config_app.py`) |
-| `service/gcp_services/` | **Source of truth** for GCP/Firebase integrations — synced into `agent_service/` |
+| `api_service/` | **Main application** — FastAPI backend (entry: `app.py`), API routes, GCP clients, tests |
+| `api_service/api/` | Route definitions (`router.py`) and app wiring — CORS, static mount, SPA fallback (`config_app.py`) |
 | `agent_service/` | **Agents deploy unit** — self-contained ADK agents with their own settings and GCP services |
 | `agent_service/agents/` | Google ADK agent definitions (each agent has `agent.py` + `prompt.py`) |
+| `job_service/` | **Background jobs** — Cloud Run jobs, one module per job in `jobs/`, with their own settings and GCP services |
 | `gcp/` | **Infrastructure** — Firebase emulator configs, Firestore rules/indexes, IAM scripts, and the `gcp` CLI |
-| `frontend/` | **Frontend** — React SPA (Vite + Tailwind v4 + shadcn/ui), built to `service/static/` during deploy |
+| `frontend/` | **Frontend** — React SPA (Vite + Tailwind v4 + shadcn/ui), built to `api_service/static/` during deploy |
 | `notebooks/` | **Experimentation** — Jupyter notebooks for Gemini, ADK and Vertex AI prototyping (`make -C notebooks lab`). `custom_model/` has its own `pyproject.toml` for the Vertex prediction image, compiled with `make -C notebooks requirements` |
 | `http_tests/` | PyCharm HTTP client requests for hitting the API by hand |
 | `frontend/app.yaml`, `frontend/app-spa.yaml` | Standalone App Engine templates for static-site hosting (multi-page / SPA) — not part of the main deploy |
@@ -138,7 +149,7 @@ Detailed guides for different aspects of the project. Start with Architecture fo
 
 Tests use pytest with `pytest-asyncio` for async support. Network access is **blocked by default** via `pytest-socket` to ensure tests don't make external calls.
 
-`service/` and `agent_service/` each carry their own pytest config and are run as separate processes — the root has no pytest config, so run them from inside the package.
+`api_service/` and `agent_service/` each carry their own pytest config and are run as separate processes — the root has no pytest config, so run them from inside the package.
 
 ```bash
 make test                                                   # service + agents + frontend
@@ -148,7 +159,7 @@ cd agent_service && uv run --all-groups pytest tests -v     # agents only
 cd frontend && bun run vitest run src/pages/HomePage.test.tsx  # single frontend test
 ```
 
-**Filter tests by marker** (markers are defined in `service/pyproject.toml`):
+**Filter tests by marker** (markers are defined in `api_service/pyproject.toml`):
 
 | Command | Description |
 |---------|-------------|
@@ -176,8 +187,8 @@ make deploy-agent   # Agents  → Agent Engine
 
 **What `make deploy-app` does:**
 1. `make build-fe` — `bun run build` in `frontend/`
-2. `make build-be` — exports `service/requirements.txt` from the lockfile
-3. copies `frontend/dist/` into `service/static/`
-4. `gcloud app deploy service/app.yaml --no-promote` — new version is deployed but does not take traffic until you migrate it
+2. `make build-be` — exports `api_service/requirements.txt` from the lockfile
+3. copies `frontend/dist/` into `api_service/static/`
+4. `gcloud app deploy api_service/app.yaml --no-promote` — new version is deployed but does not take traffic until you migrate it
 
 > See [Cloud Guide](./docs/CLOUD.md) for full deployment instructions, rollback procedures, and monitoring setup.

@@ -162,7 +162,7 @@ def test_with_specific_hosts(): ...
 
 **Symptom**: `uv run pytest` at the root finds no tests, or import errors on `api.*` / `gcp_services.*`
 
-**Cause**: There is no pytest config at the root. `service/` and `agent_service/` each define their own `pythonpath`, `testpaths`, and socket settings, and both ship a package named `gcp_services` — running them in one process collides.
+**Cause**: There is no pytest config at the root. `api_service/` and `agent_service/` each define their own `pythonpath`, `testpaths`, and socket settings, and both ship a package named `gcp_services` — running them in one process collides.
 
 **Solution**: run each from inside its package.
 ```bash
@@ -170,14 +170,6 @@ cd service && uv run --all-groups pytest tests
 cd agent_service && uv run --all-groups pytest tests
 ```
 `make test` does this for you, plus the frontend.
-
-### Agent code changes disappear
-
-**Symptom**: an edit inside `agent_service/gcp_services/` is gone after a build or deploy
-
-**Cause**: `make sync-agents` rsyncs `service/gcp_services/` over it. `service/` is the source of truth for everything except `agent_service/gcp_services/clients/gcp_services.py`, which is excluded from the sync.
-
-**Solution**: make the change in `service/gcp_services/`, then `make sync-agents`.
 
 ## GCloud CLI Issues
 
@@ -224,7 +216,7 @@ gcloud auth application-default set-quota-project <PROJECT_ID>
 
 **Solution**:
 ```bash
-make build  # Builds frontend + copies frontend/dist/ to service/static/
+make build  # Builds frontend + copies frontend/dist/ to api_service/static/
 make deploy-app
 ```
 
