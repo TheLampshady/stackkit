@@ -64,9 +64,13 @@ def main(
     :param env_file: Path to the env file to load
     :param project_id: Overrides ``PROJECT_ID`` from the environment
     :param region: Overrides the region from the toml and the environment
-    :side effects: Populates ``os.environ`` from the env file (existing vars win)
+    :raises typer.BadParameter: When ``--env-file`` names a file that is not there
+    :side effects: Populates ``os.environ`` from the env file (the file wins over
+        variables already set, like the services' settings)
     """
-    load_dotenv(env_file, override=False)
+    if env_file != DEFAULT_ENV_FILE and not env_file.exists():
+        raise typer.BadParameter(f"{env_file} not found", param_hint="--env-file")
+    load_dotenv(env_file, override=True)
     config = load_config()
     ctx.obj = State(
         project_id=project_id or os.environ.get("PROJECT_ID", ""),

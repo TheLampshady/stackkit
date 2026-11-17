@@ -11,8 +11,9 @@ stackkit:begin firebase
     uv run gcp/cli.py provision
 stackkit:end firebase
 
-Environment variables are loaded from the project root ``.env`` before any command
-runs, so commands can fall back to ``PROJECT_ID``, ``NAMESPACE``, etc.
+The project root ``.env`` (or ``--env-file``) is loaded before any command runs
+and wins over variables already set, so commands read ``PROJECT_ID``,
+``NAMESPACE``, etc. from it.
 """
 
 import sys
@@ -29,11 +30,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ENV_FILE = PROJECT_ROOT / ".env"
 
 # stackkit:begin firebase
-# `provision` reads the project's settings from a service's gcp_services/.
-# Appended, so gcp's own `commands` is found first.
-for _copy in sorted(PROJECT_ROOT.glob("*_service/gcp_services"))[:1]:
-    sys.path.append(str(_copy.parent))
-
 from commands.provision import provision
 
 # stackkit:end firebase
@@ -63,9 +59,13 @@ def main(
     """Load environment variables before dispatching to a command.
 
     :param env_file: Path to the env file to load
-    :side effects: Populates ``os.environ`` from the env file (existing vars win)
+    :raises typer.BadParameter: When ``--env-file`` names a file that is not there
+    :side effects: Populates ``os.environ`` from the env file (the file wins over
+        variables already set, like the services' settings)
     """
-    load_dotenv(env_file, override=False)
+    if env_file != DEFAULT_ENV_FILE and not env_file.exists():
+        raise typer.BadParameter(f"{env_file} not found", param_hint="--env-file")
+    load_dotenv(env_file, override=True)
 
 
 # stackkit:begin firebase

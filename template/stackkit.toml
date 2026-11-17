@@ -179,12 +179,9 @@ refs = [
 [modules.auth_firebase]
 summary = "Accounts people sign up for (Firebase Auth). The server side only; login screens are built on top."
 requires = ["api", "firebase"]
-paths = [
-    "gcp_services/clients/fb_auth.py",
-    "gcp/bin/test_auth.py",
-]
+paths = ["gcp_services/clients/fb_auth.py"]
 json_keys = { "gcp/firebase.json" = ["emulators.auth"] }
-refs = ["fb_auth", "firebase_auth_required", "auth_client", "test_auth.py"]
+refs = ["fb_auth", "firebase_auth_required", "auth_client"]
 
 [modules.ai]
 summary = "One-off AI calls from the server or jobs (Gemini or Claude on Vertex AI)."

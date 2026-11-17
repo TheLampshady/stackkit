@@ -1,6 +1,7 @@
 """Tests for the jobs CLI. Nothing here calls Google: commands run with --dry-run."""
 
 import json
+import os
 import subprocess
 
 import pytest
@@ -36,7 +37,7 @@ def project(monkeypatch):
 
 
 def invoke(*args: str):
-    return runner.invoke(app, ["--env-file", "/nonexistent", *args])
+    return runner.invoke(app, ["--env-file", os.devnull, *args])
 
 
 def timer(job: str = "example", name: str | None = None, **payload) -> common.Timer:
