@@ -26,6 +26,9 @@ dependencies = [
     "pydantic-settings>=2.16.0",
     "scalar-fastapi>=1.9.1",
     "google-auth>=2.62.0",
+    # stackkit:begin api_jobs
+    "google-cloud-run>=0.16.3",
+    # stackkit:end api_jobs
 ]
 
 [dependency-groups]

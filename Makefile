@@ -3,11 +3,11 @@ SAMPLES := $(shell mktemp -d -u)/stackkit-samples
 # name:modules-to-remove. Covers every module kept and removed at least once.
 SAMPLE_SPECS := \
 	"all-modules:" \
-	"team-tool:agents,jobs,notebooks,auth_firebase,storage,cloud_run,always_on" \
-	"accounts-files:agents,jobs,notebooks,auth_iap,database,ai,frontend,gae" \
-	"api-only:frontend,agents,jobs,notebooks,http_tests,auth_iap,auth_firebase,database,storage,ai,gae,always_on" \
-	"jobs-only:api,frontend,agents,notebooks,http_tests,auth_iap,auth_firebase,storage,gae,cloud_run,always_on" \
-	"static-site:api,agents,jobs,notebooks,http_tests,auth_firebase,database,storage,ai,cloud_run,always_on"
+	"team-tool:agents,jobs,api_jobs,notebooks,auth_firebase,storage,cloud_run,always_on" \
+	"accounts-files:agents,jobs,api_jobs,notebooks,auth_iap,database,ai,frontend,gae" \
+	"api-only:frontend,agents,jobs,api_jobs,notebooks,http_tests,auth_iap,auth_firebase,database,storage,ai,gae,always_on" \
+	"jobs-only:api,api_jobs,frontend,agents,notebooks,http_tests,auth_iap,auth_firebase,storage,gae,cloud_run,always_on" \
+	"static-site:api,agents,jobs,api_jobs,notebooks,http_tests,auth_firebase,database,storage,ai,cloud_run,always_on"
 
 .PHONY: help
 help: ## Show available targets
@@ -68,7 +68,7 @@ test-bootstrap: lint check-versions ## Lint, bootstrap sample projects (convert 
 	echo KEY=1 > $$old/images/.env; echo x > $$old/src/app.js; mkdir $$old/.git; \
 	uv run --python 3.13 --no-project skills/create/scripts/bootstrap.py --convert \
 		--dest $$old --name sample-convert --display-name "Sample convert" \
-		--remove api,agents,jobs,notebooks,http_tests,auth_firebase,database,storage,ai,cloud_run,always_on \
+		--remove api,agents,jobs,api_jobs,notebooks,http_tests,auth_firebase,database,storage,ai,cloud_run,always_on \
 		--copy $$old/images=frontend/public/images > $$old-boot.json || { cat $$old-boot.json; exit 1; }; \
 	test -d $$old/.git && test -f $$old/frontend/public/images/a.png \
 		&& test ! -e $$old/frontend/public/images/.env && test ! -e $$old/src \
@@ -80,10 +80,10 @@ test-bootstrap: lint check-versions ## Lint, bootstrap sample projects (convert 
 	grow=$(SAMPLES)/grow; fresh=$(SAMPLES)/grow-fresh; \
 	uv run --python 3.13 --no-project skills/create/scripts/bootstrap.py --dest $$grow \
 		--name sample-grow --display-name "Sample grow" --env NAMESPACE=sample-grow \
-		--remove frontend,agents,jobs,notebooks,http_tests,auth_iap,auth_firebase,database,storage,ai,gae,always_on \
+		--remove frontend,agents,jobs,api_jobs,notebooks,http_tests,auth_iap,auth_firebase,database,storage,ai,gae,always_on \
 		> $$grow-boot.json || { cat $$grow-boot.json; exit 1; }; \
 	uv run --python 3.13 --no-project skills/create/scripts/bootstrap.py --dest $$grow \
-		--add frontend,database,auth_iap,jobs --display-name "Sample grow" > $$grow-add.json \
+		--add frontend,database,auth_iap,jobs,api_jobs --display-name "Sample grow" > $$grow-add.json \
 		|| { cat $$grow-add.json; exit 1; }; \
 	uv run --python 3.13 --no-project skills/create/scripts/bootstrap.py --dest $$fresh \
 		--name sample-grow --display-name "Sample grow" --env NAMESPACE=sample-grow \

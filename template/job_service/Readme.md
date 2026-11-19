@@ -20,6 +20,7 @@ builds each job from this folder.
 | `pyproject.toml` | This folder's Python packages. |
 | `tests/` | Tests, run with Google's services mocked. |
 | `.gcloudignore` | Files left out of what's sent to Google. |
+| `emulator.py` | Stands in for Cloud Run on this computer, so the server's `start_job` runs jobs here. `make emulator` starts it; it isn't deployed. |
 
 Every job is the same hosting: one folder, built the same way. A job is a Cloud
 Run job at Google named `<NAMESPACE>-<name>` (dashes for `_`) that runs `jobs/<name>.py`.
@@ -107,6 +108,28 @@ hand, like `backfill`. Google holds the real state; the file is what `deploy` an
 `schedule` push there, so run them again after editing it, and `make list-jobs`
 shows what's online.
 
+<!-- stackkit:begin api_jobs -->
+## Started by the server
+
+People never start a job themselves. The server's own endpoints decide when, then
+call `start_job` from `gcp_services/clients/gcp_runjob.py`:
+
+```python
+from gcp_services.clients.gcp_runjob import JobBusyError, get_run, start_job
+
+run_id = await start_job("summarize_file", {"file": "report.pdf"}, key=f"report:{uid}")
+run = await get_run(run_id)  # run["status"]: queued, running, retrying, done or failed
+```
+
+- It answers at once with a run id; the job keeps going at Google. `/api/example-runs/` in `api_service/api/router.py` is the pattern.
+- Each run is a document in `job_runs`. The job keeps its `status` up to date itself (`main.py` does it for every job), and saves `failed` only after its last try.
+- `key`: one run with that key at a time. Starting it again while one is going returns the same run id.
+- `limit` (10 by default): runs of one job going at once. Past it, `start_job` raises `JobBusyError`; answer 429 (busy).
+- `deadline` (2 hours by default): the job's timeout times its tries. A run not finished by then stopped without reporting back (out of time or memory), and `get_run` calls it `failed`. Change it when the job's timeout or retries do.
+- People can't read `job_runs` or `job_limits` (`gcp/firestore.rules` blocks them); the page asks the server.
+- Locally, `make emulator` also starts `emulator.py`, which runs each job on this computer against the local database.
+
+<!-- stackkit:end api_jobs -->
 ## Limits
 
 Set in `job_service.toml` (`[defaults]` for every job, `[jobs.<name>]` for one), or

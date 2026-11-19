@@ -78,7 +78,8 @@ def deploy(
     for name in names:
         settings = deploy_settings(state.config, name)
         settings.update({k: v for k, v in flags.items() if v is not None})
-        env = f"JOB_NAME={name}"
+        # MAX_RETRIES lets a run tell its last try from one Cloud Run will repeat
+        env = f"JOB_NAME={name},MAX_RETRIES={settings['retries']}"
         if state.namespace:
             env += f",NAMESPACE={state.namespace}"
         args = [

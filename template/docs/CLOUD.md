@@ -201,6 +201,9 @@ The script reads `PROJECT_ID` from the root `.env` and grants:
 <!-- stackkit:begin cloud_run,agents -->
 | `roles/run.builder` | Build Cloud Run source deploys, granted to the Compute Engine default account. Without it, deploying to Cloud Run fails with a permission error | Project |
 <!-- stackkit:end cloud_run,agents -->
+<!-- stackkit:begin api_jobs -->
+| `roles/run.jobsExecutorWithOverrides` | Start a background job with its own input (`start_job`), granted to the server's account only | Project |
+<!-- stackkit:end api_jobs -->
 <!-- stackkit:begin agents -->
 
 Agents deploy on their own, so the script also grants the accounts they run as: `roles/datastore.user` and `roles/aiplatform.user` to the Compute Engine default account (`make deploy-agent-cr`), and `roles/datastore.user` to the Agent Engine service agent, `service-<project-number>@gcp-sa-aiplatform-re.iam.gserviceaccount.com` (`make deploy-agent`), whose own role already covers Vertex AI. Google creates that service agent on the first Agent Engine deploy, so rerun the script after it.

@@ -45,6 +45,7 @@ Each answer keeps or removes a module, so the project is only as big as the brie
 | Customers have their own accounts | `auth_firebase` (Firebase Auth; login screens are built later, by other kits) |
 | It uses AI: one job when asked / an assistant that acts | `ai` (Gemini/Claude on Vertex AI) / plus `agents` (ADK) |
 | Work that takes more than a minute, or runs on a timer with nothing to open | `jobs` (Cloud Run jobs, built from source; no Docker) |
+| Long work a person starts and waits for | plus `api_jobs` (the server starts the job and tracks it in the database) |
 | With nothing to open, where the result goes: a file (the default), an app they use, or a page | `storage` / that app's key / `frontend` and `api` |
 | None of the above, and nothing behind the scenes | no `api`: a static site |
 | Its own web address / Google's address | `gae` (App Engine) / `cloud_run` (Cloud Run) |

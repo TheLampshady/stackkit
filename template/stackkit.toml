@@ -93,6 +93,25 @@ paths = ["job_service"]
 workspace_member = "job_service"
 refs = ["job_service", "run-job", "deploy-job", "start-job", "schedule-job", "unschedule-job", "list-jobs", "job-runs"]
 
+[modules.api_jobs]
+summary = "The server starts background work when someone asks, and keeps track of it in the database."
+requires = ["api", "jobs", "database"]
+paths = [
+    "gcp_services/clients/gcp_runjob.py",
+    "job_service/emulator.py",
+    "job_service/tests/test_emulator.py",
+    "job_service/tests/test_track_run.py",
+    "api_service/tests/test_runjob.py",
+]
+refs = [
+    "gcp_runjob",
+    "start_job",
+    "JOB_RUN_ID",
+    "CLOUD_RUN_EMULATOR_HOST",
+    "example-runs",
+    "jobsExecutorWithOverrides",
+]
+
 [modules.notebooks]
 summary = "Jupyter notebooks for AI/ML experiments."
 requires = ["ai"]

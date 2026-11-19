@@ -65,6 +65,7 @@ bash gcp/bin/setup_iam.sh   # Grant the server's service accounts their roles (r
 - `agent_service/gcp_services/` - The agents' own copy of the GCP service modules
 - `agent_service/deploy.py` - Agent Engine deployment via vertexai.agent_engines
 - `job_service/` - Background jobs on Cloud Run jobs: one module per job in `jobs/`, each with a `main()`, run by `main.py`
+- `*_service/gcp_services/clients/gcp_runjob.py` - The server starts background jobs with `start_job` and tracks them in `job_runs` (`job_service/emulator.py` runs them locally)
 - `gcp/` - Firebase emulator orchestration and deployment tooling
 - `notebooks/` - ML experimentation with Vertex AI
 

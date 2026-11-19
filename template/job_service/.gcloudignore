@@ -11,3 +11,6 @@ tests/
 cli.py
 commands/
 job_service.toml
+# stackkit:begin api_jobs
+emulator.py
+# stackkit:end api_jobs

@@ -19,7 +19,7 @@ async def main() -> None:
     """
     Log which task this is and, with a database, record the run.
 
-    :side effects: Logs; with a database, adds a document to ``job_runs``
+    :side effects: Logs; with a database, adds a document to ``example_runs``
     """
     index, count = task_share()
     logger.info(
@@ -33,7 +33,7 @@ async def main() -> None:
 
     from gcp_services.clients.gcp_services import db
 
-    await db.collection("job_runs").add(
+    await db.collection("example_runs").add(
         {"job": "example", "task": index, "finished_at": datetime.now(UTC)}
     )
     # stackkit:end database
