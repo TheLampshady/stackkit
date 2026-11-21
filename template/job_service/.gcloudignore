@@ -11,6 +11,10 @@ tests/
 cli.py
 commands/
 job_service.toml
-# stackkit:begin api_jobs
+# stackkit:begin api
+# stackkit:begin jobs
+# stackkit:begin database
 emulator.py
-# stackkit:end api_jobs
+# stackkit:end database
+# stackkit:end jobs
+# stackkit:end api

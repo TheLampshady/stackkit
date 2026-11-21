@@ -108,7 +108,9 @@ hand, like `backfill`. Google holds the real state; the file is what `deploy` an
 `schedule` push there, so run them again after editing it, and `make list-jobs`
 shows what's online.
 
-<!-- stackkit:begin api_jobs -->
+<!-- stackkit:begin api -->
+<!-- stackkit:begin jobs -->
+<!-- stackkit:begin database -->
 ## Started by the server
 
 People never start a job themselves. The server's own endpoints decide when, then
@@ -129,7 +131,9 @@ run = await get_run(run_id)  # run["status"]: queued, running, retrying, done or
 - People can't read `job_runs` or `job_limits` (`gcp/firestore.rules` blocks them); the page asks the server.
 - Locally, `make emulator` also starts `emulator.py`, which runs each job on this computer against the local database.
 
-<!-- stackkit:end api_jobs -->
+<!-- stackkit:end database -->
+<!-- stackkit:end jobs -->
+<!-- stackkit:end api -->
 ## Limits
 
 Set in `job_service.toml` (`[defaults]` for every job, `[jobs.<name>]` for one), or

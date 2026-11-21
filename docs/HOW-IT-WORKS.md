@@ -59,7 +59,7 @@ TEST_TARGETS += test-jobs
 # stackkit:end jobs
 ```
 
-A marker that names several modules (`stackkit:begin cloud_run,agents,jobs`) goes only when all of them are removed. The template runs with the markers in place, so `make check` passes in a plain copy.
+A marker that names several modules (`stackkit:begin cloud_run,agents,jobs`) goes only when all of them are removed. Markers inside one another work the other way: the inner lines go when any of the modules around them is removed, as do files listed under several modules' `paths`. The template runs with the markers in place, so `make check` passes in a plain copy.
 
 | Field | Meaning |
 |---|---|
@@ -97,7 +97,7 @@ Each `*_service/` folder deploys on its own, so each keeps a copy of the Google 
 `make test-bootstrap` is the test suite. Run it after any change to `template/` or the scripts.
 
 1. **Lint** the scripts and template with ruff, without fixes: a fix that moves imports would move the markers above them.
-2. **Check versions:** the pinned Java and Node in `status.py` still satisfy the latest Firebase CLI, and `template/docs/ENVIRONMENTS.md` matches.
+2. **Check versions:** the pinned Java and Node in `status.py` still satisfy the latest Firebase CLI, and `template/docs/ENVIRONMENTS.md` matches. Then check that [`MODULES.md`](MODULES.md) lists every module.
 3. **Sample projects** (`SAMPLE_SPECS`): between them every module is kept and removed. For each: no `stackkit` left, no removed module mentioned outside Markdown, `make check` and `make build` pass, `status.py` sees the kept parts, `setup_iam.sh` parses, every service's `gcp_services/` matches the others, and there's no `shared/`.
 4. **Convert** an existing repo in place, and check the layout and the moved-aside files.
 5. **Add** parts to an API-only project and compare it with a fresh project built with them.
@@ -112,5 +112,5 @@ Each `*_service/` folder deploys on its own, so each keeps a copy of the Google 
 | `skills/status/` | The checklist and cost summary |
 | `shared/gcp_services/` | The one source for the Google clients and settings the template's services each commit a copy of (`make sync`). Never part of a project. |
 | `template/` | The product: the runnable stack every project is copied from. Its own `AGENTS.md` covers working inside it. |
-| `dev/` | Helpers for `make test-bootstrap` (`check_docs.py`, `check_versions.py`) |
+| `dev/` | Helpers for `make test-bootstrap` (`check_docs.py`, `check_versions.py`, `check_modules.py`) |
 | `docs/research/` | Research charter and findings behind the design |

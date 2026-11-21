@@ -32,10 +32,14 @@
 # Background jobs run as the Compute Engine default account, which also gets
 # run.invoker: Google's timer starts scheduled jobs as it.
 # stackkit:end jobs
-# stackkit:begin api_jobs
+# stackkit:begin api
+# stackkit:begin jobs
+# stackkit:begin database
 # The server starts background jobs (gcp_runjob.py), so its account gets
 # run.jobsExecutorWithOverrides: run a job with its own input, nothing more.
-# stackkit:end api_jobs
+# stackkit:end database
+# stackkit:end jobs
+# stackkit:end api
 # stackkit:begin cloud_run,agents,jobs
 # And the Compute Engine default account, which builds Cloud Run source
 # deploys, gets run.builder (without it, deploying fails with a permission error).
@@ -144,7 +148,9 @@ grant_project_role "$AGENT_ENGINE_ACCOUNT" roles/datastore.user \
 grant_project_role "$COMPUTE_ACCOUNT" roles/run.invoker
 # stackkit:end jobs
 
-# stackkit:begin api_jobs
+# stackkit:begin api
+# stackkit:begin jobs
+# stackkit:begin database
 # --- The server starts background jobs ---
 # stackkit:begin gae
 grant_project_role "${PROJECT_ID}@appspot.gserviceaccount.com" roles/run.jobsExecutorWithOverrides
@@ -152,7 +158,9 @@ grant_project_role "${PROJECT_ID}@appspot.gserviceaccount.com" roles/run.jobsExe
 # stackkit:begin cloud_run
 grant_project_role "$COMPUTE_ACCOUNT" roles/run.jobsExecutorWithOverrides
 # stackkit:end cloud_run
-# stackkit:end api_jobs
+# stackkit:end database
+# stackkit:end jobs
+# stackkit:end api
 
 # stackkit:begin cloud_run,agents,jobs
 # --- Cloud Run source deploys build as the Compute Engine default account ---

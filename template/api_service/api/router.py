@@ -8,10 +8,14 @@ from gcp_services.clients import gcp_services
 from gcp_services.clients.fb_auth import firebase_auth_required
 
 # stackkit:end auth_firebase
-# stackkit:begin api_jobs
+# stackkit:begin api
+# stackkit:begin jobs
+# stackkit:begin database
 from gcp_services.clients.gcp_runjob import JobBusyError, get_run, start_job
 
-# stackkit:end api_jobs
+# stackkit:end database
+# stackkit:end jobs
+# stackkit:end api
 from pydantic import BaseModel
 
 
@@ -61,7 +65,9 @@ async def db_list(request: Request) -> dict[str, list[str]]:
 
 
 # stackkit:end database
-# stackkit:begin api_jobs
+# stackkit:begin api
+# stackkit:begin jobs
+# stackkit:begin database
 # Background work the server starts: copy these for your own jobs. Users can't
 # start a job themselves; the server's endpoints decide when, then call start_job.
 @api_router.post("/example-runs/", status_code=202)
@@ -103,4 +109,6 @@ async def run_status(request: Request, run_id: str) -> dict[str, str | None]:
     return {"job": run["job"], "status": run["status"], "error": run.get("error")}
 
 
-# stackkit:end api_jobs
+# stackkit:end database
+# stackkit:end jobs
+# stackkit:end api

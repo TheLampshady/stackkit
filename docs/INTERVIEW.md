@@ -82,7 +82,7 @@ The brief answers 1, 2 (no page), 7 (a timer) and 6 (AI, one job). A report with
 | 6 | no | remove `ai` and `agents` |
 | 6b | (a) one job | keep `ai`, remove `agents` |
 | 6b | (b) an assistant | keep `ai`, `agents` and `database` |
-| 7, 7b | see below | `api`, `jobs`, `api_jobs` |
+| 7, 7b | see below | `api`, `jobs` |
 | 7c | each service | the names of its keys, wired into `SECRET_KEY_NAMES` and `setup_iam.sh` |
 | 7d | (a) a file (assumed for a report) | keep `storage` |
 | 7d | (b) an app they use | that app's key names (a Google Sheet needs none) |
@@ -93,7 +93,7 @@ The brief answers 1, 2 (no page), 7 (a timer) and 6 (AI, one job). A report with
 | when a timer runs (assumed) | from the brief, in the computer's time zone | the job's timer in `job_service/job_service.toml` |
 | 12 | someone else, or not sure / me | the hand-over includes a note to send / the steps themselves |
 
-Without asking: `notebooks` is removed, `http_tests` goes with `api`, and any kind of sign-in keeps `api`. A static site always goes on App Engine (no `cloud_run`, no `always_on`).
+Without asking: `notebooks` is removed, `http_tests` goes with `api`, any kind of sign-in keeps `api`. A project with a server, jobs and a database also gets the server's way to start its jobs (`start_job`). A static site always goes on App Engine (no `cloud_run`, no `always_on`).
 
 ## The server or background work
 
@@ -101,14 +101,14 @@ Questions 2, 7 and 7b decide whether there's a server (`api`), background work (
 
 ```mermaid
 flowchart TD
-    A{"Page (2), and 7 is only<br/>'nothing', with 3, 4, 6 no<br/>and 5 (a)?"} -- yes --> S["Static site<br/>remove api, http_tests,<br/>jobs, api_jobs"]
+    A{"Page (2), and 7 is only<br/>'nothing', with 3, 4, 6 no<br/>and 5 (a)?"} -- yes --> S["Static site<br/>remove api, http_tests, jobs"]
     A -- no --> B{"No page (2), and 7<br/>is only a timer?"}
-    B -- yes --> J["Background work only<br/>keep jobs; remove api, api_jobs,<br/>frontend, sign-in and hosting"]
+    B -- yes --> J["Background work only<br/>keep jobs; remove api, frontend,<br/>sign-in and hosting"]
     B -- no --> C["A server: keep api"]
     C --> D{"7b · Long work?"}
-    D -- "(a) no, it's quick" --> N["remove jobs, api_jobs"]
-    D -- "(b) yes, a person waits" --> W["keep jobs, database and api_jobs:<br/>a route starts the job (start_job)<br/>and the page asks how it's going"]
-    D -- "(c) yes, nobody waits" --> T["keep jobs; remove api_jobs"]
+    D -- "(a) no, it's quick" --> N["remove jobs"]
+    D -- "(b) yes, a person waits" --> W["keep jobs and database:<br/>a route starts the job (start_job)<br/>and the page asks how it's going"]
+    D -- "(c) yes, nobody waits" --> T["keep jobs"]
 ```
 
 Something on a schedule that's quick, on a project with a server, is a server route with a make target, started by a timer at Google once it's online. Long work, or a project with no server, is a job. A new file or record arriving (7, "something arrives") is a reaction: stackkit doesn't have that part yet, so `create` builds a first version by hand from [`reactions.md`](../skills/create/reactions.md), and keeps the part it watches (`storage` or `database`).
