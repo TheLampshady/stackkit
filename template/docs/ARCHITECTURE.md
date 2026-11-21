@@ -48,6 +48,7 @@ The SPA is built into `api_service/static/` at deploy time, so in production the
 | `agent_service/gcp_services/` | The agents' own copy of the GCP/Firebase integrations |
 | `agent_service/tests/` | pytest test suite for the agents |
 | `job_service/` | Background jobs deploy unit (Cloud Run jobs): `main.py` runs one module from `jobs/` |
+| `*_service/gcp_services/clients/gcp_runjob.py` | The server starts jobs (`start_job`) and tracks them in `job_runs`; `job_service/emulator.py` runs them locally |
 | `frontend/` | React 19 SPA (Vite, Tailwind v4, shadcn/ui) |
 | `gcp/` | Emulator orchestration, Firestore rules/indexes, IAM scripts, `gcp` CLI |
 | `notebooks/` | ML experimentation with Vertex AI |

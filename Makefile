@@ -38,6 +38,7 @@ check-versions: ## Compare the pinned Java/Node versions with what the latest Fi
 .PHONY: test-bootstrap
 test-bootstrap: lint check-versions ## Lint, bootstrap sample projects (convert one existing repo, grow one by adding parts), check for leftovers, run `make check` and `make build` in each
 	@shared/sync.sh --check && echo "  ✓ every template service's gcp_services/ matches shared/"
+	@uv run --python 3.13 --no-project dev/check_modules.py
 	@set -e; mkdir -p $(SAMPLES); for spec in $(SAMPLE_SPECS); do \
 		name=$${spec%%:*}; remove=$${spec#*:}; dest=$(SAMPLES)/$$name; \
 		echo "── $$name (remove: $${remove:-none})"; \

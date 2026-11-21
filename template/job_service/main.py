@@ -37,6 +37,19 @@ def run(name: str) -> None:
         raise ValueError(f"Job names are lowercase letters, digits and _: {name!r}")
     job = importlib.import_module(f"jobs.{name}")
     logger.info("Starting job %s", name)
+    # stackkit:begin api
+    # stackkit:begin jobs
+    # stackkit:begin database
+    # Started by the server (gcp_runjob.start_job): report back to its job_runs entry
+    if run_id := os.environ.get("JOB_RUN_ID"):
+        from gcp_services.clients.gcp_runjob import track_run
+
+        asyncio.run(track_run(name, run_id, job.main))
+        logger.info("Finished job %s (run %s)", name, run_id)
+        return
+    # stackkit:end database
+    # stackkit:end jobs
+    # stackkit:end api
     result = job.main()
     if inspect.isawaitable(result):
         asyncio.run(result)

@@ -50,6 +50,11 @@ requires = ["gcp", "iam"]
 paths = [
     "api_service",
     ".run/Service.run.xml",
+    # The server starting jobs: also listed under jobs and database
+    "gcp_services/clients/gcp_runjob.py",
+    "job_service/emulator.py",
+    "job_service/tests/test_emulator.py",
+    "job_service/tests/test_track_run.py",
     "frontend/src/lib/api.ts",
     "frontend/src/lib/api.test.ts",
     "frontend/src/lib/types.ts",
@@ -66,6 +71,7 @@ refs = [
     "typecheck-be",
     "@/lib/api",
     "/api/",
+    "gcp_runjob",
 ]
 
 [modules.frontend]
@@ -89,9 +95,14 @@ requires = ["iam", "gcp"]
 # Deploys on its own with its own copy of the shared clients, so other
 # modules' refs aren't checked inside it.
 self_contained = true
-paths = ["job_service"]
+paths = [
+    "job_service",
+    # The server starting jobs: also listed under api and database
+    "gcp_services/clients/gcp_runjob.py",
+    "api_service/tests/test_runjob.py",
+]
 workspace_member = "job_service"
-refs = ["job_service", "run-job", "deploy-job", "start-job", "schedule-job", "unschedule-job", "list-jobs", "job-runs"]
+refs = ["job_service", "run-job", "deploy-job", "start-job", "schedule-job", "unschedule-job", "list-jobs", "job-runs", "gcp_runjob"]
 
 [modules.notebooks]
 summary = "Jupyter notebooks for AI/ML experiments."
@@ -120,6 +131,12 @@ paths = [
     "notebooks/service_test.ipynb",
     "job_service/jobs/summarize_file.py",
     "job_service/tests/test_summarize_file_job.py",
+    # The server starting jobs: also listed under api and jobs
+    "gcp_services/clients/gcp_runjob.py",
+    "job_service/emulator.py",
+    "job_service/tests/test_emulator.py",
+    "job_service/tests/test_track_run.py",
+    "api_service/tests/test_runjob.py",
 ]
 json_keys = { "gcp/firebase.json" = ["firestore", "emulators.firestore"] }
 refs = [
@@ -130,6 +147,7 @@ refs = [
     "sync_db",
     "firestore.rules",
     "firestore.indexes",
+    "gcp_runjob",
 ]
 
 [modules.storage]

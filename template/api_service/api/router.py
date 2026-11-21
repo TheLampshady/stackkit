@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
 # stackkit:begin database,storage
 from gcp_services.clients import gcp_services
@@ -8,6 +8,14 @@ from gcp_services.clients import gcp_services
 from gcp_services.clients.fb_auth import firebase_auth_required
 
 # stackkit:end auth_firebase
+# stackkit:begin api
+# stackkit:begin jobs
+# stackkit:begin database
+from gcp_services.clients.gcp_runjob import JobBusyError, get_run, start_job
+
+# stackkit:end database
+# stackkit:end jobs
+# stackkit:end api
 from pydantic import BaseModel
 
 
@@ -57,3 +65,50 @@ async def db_list(request: Request) -> dict[str, list[str]]:
 
 
 # stackkit:end database
+# stackkit:begin api
+# stackkit:begin jobs
+# stackkit:begin database
+# Background work the server starts: copy these for your own jobs. Users can't
+# start a job themselves; the server's endpoints decide when, then call start_job.
+@api_router.post("/example-runs/", status_code=202)
+# stackkit:begin auth_firebase
+@firebase_auth_required()
+# stackkit:end auth_firebase
+async def start_example_run(request: Request) -> dict[str, str]:
+    """
+    Start the example background job and answer at once with its run id.
+
+    :param request: The incoming request
+    :return: ``run_id``, for ``GET /api/runs/<run_id>``
+    :raises HTTPException: 429 when the job already has its limit of runs going
+    :side effects: Starts the ``example`` job (job_service/jobs/example.py)
+    """
+    try:
+        run_id = await start_job("example", {})
+    except JobBusyError as error:
+        raise HTTPException(429, "Busy: try again shortly") from error
+    return {"run_id": run_id}
+
+
+@api_router.get("/runs/{run_id}")
+# stackkit:begin auth_firebase
+@firebase_auth_required()
+# stackkit:end auth_firebase
+async def run_status(request: Request, run_id: str) -> dict[str, str | None]:
+    """
+    How a background run is going: queued, running, retrying, done or failed.
+
+    :param request: The incoming request
+    :param run_id: The id ``start_job`` returned
+    :return: The run's ``job``, ``status`` and ``error``
+    :raises HTTPException: 404 when there's no such run
+    """
+    run = await get_run(run_id)
+    if run is None:
+        raise HTTPException(404, "No such run")
+    return {"job": run["job"], "status": run["status"], "error": run.get("error")}
+
+
+# stackkit:end database
+# stackkit:end jobs
+# stackkit:end api
