@@ -1,5 +1,6 @@
 """Runs the server starts report back to their job_runs entry."""
 
+import asyncio
 from unittest import mock
 
 import pytest
@@ -51,3 +52,39 @@ def test_a_try_cloud_run_repeats_is_retrying(monkeypatch, saved):
         run("example")
     assert set_status.call_args.args == ("r1", "retrying")
     finish_run.assert_not_called()
+
+
+def test_exit_with_an_error_code_fails(monkeypatch, saved):
+    _, finish_run = saved
+    fake_job(monkeypatch, SystemExit(1))
+    with pytest.raises(SystemExit):
+        run("example")
+    assert finish_run.call_args.args == ("example", "r1", "failed")
+
+
+def test_exit_0_is_done(monkeypatch, saved):
+    _, finish_run = saved
+    fake_job(monkeypatch, SystemExit(0))
+    with pytest.raises(SystemExit):
+        run("example")
+    assert finish_run.call_args.args == ("example", "r1", "done")
+
+
+def test_a_plain_main_may_call_asyncio_run(monkeypatch, saved):
+    _, finish_run = saved
+
+    async def save() -> None: ...
+
+    monkeypatch.setattr("jobs.example.main", lambda: asyncio.run(save()))
+    run("example")
+    assert finish_run.call_args.args == ("example", "r1", "done")
+
+
+def test_a_failed_save_after_the_work_doesnt_fail_the_run(monkeypatch, saved):
+    _, finish_run = saved
+    finish_run.side_effect = RuntimeError("Firestore is down")
+    monkeypatch.setattr(gcp_runjob, "SAVE_TRIES", 2)
+    monkeypatch.setattr(gcp_runjob.asyncio, "sleep", mock.AsyncMock())
+    fake_job(monkeypatch)
+    run("example")  # doesn't raise, so Cloud Run won't run the job again
+    assert finish_run.call_count == 2

@@ -123,11 +123,13 @@ run_id = await start_job("summarize_file", {"file": "report.pdf"}, key=f"report:
 run = await get_run(run_id)  # run["status"]: queued, running, retrying, done or failed
 ```
 
-- It answers at once with a run id; the job keeps going at Google. `/api/example-runs/` in `api_service/api/router.py` is the pattern.
+- It answers at once with a run id; the job keeps going at Google. `/api/example-runs/` in `api_service/api/router.py` is the pattern. It comes only with a sign-in, and so should yours: an endpoint anyone can call lets anyone run up the bill.
+- `owner`: who started it (the example saves the caller's email). The example's `GET /api/runs/<id>` shows a run only to its owner.
 - Each run is a document in `job_runs`. The job keeps its `status` up to date itself (`main.py` does it for every job), and saves `failed` only after its last try.
 - `key`: one run with that key at a time. Starting it again while one is going returns the same run id.
 - `limit` (10 by default): runs of one job going at once. Past it, `start_job` raises `JobBusyError`; answer 429 (busy).
-- `deadline` (2 hours by default): the job's timeout times its tries. A run not finished by then stopped without reporting back (out of time or memory), and `get_run` calls it `failed`. Change it when the job's timeout or retries do.
+- `deadline` (2 hours by default): the job's timeout times its tries. A run not finished by then stopped without reporting back (out of time or memory), and `get_run` calls it `failed`. Change it when the job's timeout or retries do: the `backfill` example (6h, 1 retry) needs `deadline=timedelta(hours=12)`.
+- Jobs put online before the server could start them need `make deploy-job` again, so they know their retry count (`MAX_RETRIES`).
 - People can't read `job_runs` or `job_limits` (`gcp/firestore.rules` blocks them); the page asks the server.
 - Locally, `make emulator` also starts `emulator.py`, which runs each job on this computer against the local database.
 

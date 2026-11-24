@@ -42,7 +42,8 @@ def module_name(cloud_run_job: str, namespace: str | None) -> str:
     :param namespace: The project's NAMESPACE, or None
     :return: Such as ``summarize_file``
     """
-    prefix = f"{namespace}-" if namespace else ""
+    # cloud_run_name() turns the namespace's _ into - too
+    prefix = f"{namespace}-".replace("_", "-") if namespace else ""
     return cloud_run_job.removeprefix(prefix).replace("-", "_")
 
 

@@ -2,6 +2,7 @@
 export
 
 REGION ?= us-central1
+COMMA := ,
 
 # ------ BUILD ------
 
@@ -65,7 +66,7 @@ deploy: check-env build
 		$(ACCESS_FLAGS) \
 		$(SCALE_FLAGS) \
 		--cpu-boost \
-		$(if $(NAMESPACE),--set-env-vars=NAMESPACE=$(NAMESPACE),) \
+		--set-env-vars=REGION=$(REGION)$(if $(NAMESPACE),$(COMMA)NAMESPACE=$(NAMESPACE),) \
 		--quiet
 	@echo ""
 	@echo "Live: $$(gcloud run services describe $(SERVICE) --project=$(PROJECT_ID) --region=$(REGION) --format='value(status.url)')"

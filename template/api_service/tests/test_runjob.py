@@ -58,9 +58,10 @@ def test_cloud_run_name_matches_deploy():
         assert cloud_run_name("summarize_file") == "summarize-file"
 
 
+# stackkit:begin auth_iap,auth_firebase
 @pytest.fixture
 def headers(request: pytest.FixtureRequest) -> dict[str, str]:
-    """Headers that get past the project's sign-in, if it has one."""
+    """Headers that get past the project's sign-in."""
     found: dict[str, str] = {}
     # stackkit:begin auth_firebase
     request.getfixturevalue("mock_firebase_auth")
@@ -69,17 +70,33 @@ def headers(request: pytest.FixtureRequest) -> dict[str, str]:
     return found
 
 
+@pytest.fixture
+def me() -> str:
+    """The email the endpoints see for the caller."""
+    email = ""
+    # stackkit:begin auth_iap
+    from app_settings import settings
+
+    email = settings.local_user_email or ""
+    # stackkit:end auth_iap
+    # stackkit:begin auth_firebase
+    email = "testuser@example.com"  # conftest's mock_firebase_auth
+    # stackkit:end auth_firebase
+    return email
+
+
 class TestRunEndpoints:
     """The example endpoints that start a job and report on it."""
 
     async def test_start_answers_with_the_run_id(
-        self, async_client: AsyncClient, headers
+        self, async_client: AsyncClient, headers, me
     ):
         with patch("api.router.start_job", AsyncMock(return_value="r1")) as start:
             response = await async_client.post("/api/example-runs/", headers=headers)
         assert response.status_code == 202
         assert response.json() == {"run_id": "r1"}
         assert start.call_args.args[0] == "example"
+        assert start.call_args.kwargs["owner"] == me
 
     async def test_busy_is_429(self, async_client: AsyncClient, headers):
         busy = AsyncMock(side_effect=JobBusyError("full"))
@@ -87,8 +104,8 @@ class TestRunEndpoints:
             response = await async_client.post("/api/example-runs/", headers=headers)
         assert response.status_code == 429
 
-    async def test_status(self, async_client: AsyncClient, headers):
-        run = {"job": "example", "status": "running", "error": None, "payload": {}}
+    async def test_status(self, async_client: AsyncClient, headers, me):
+        run = {"job": "example", "status": "running", "error": None, "owner": me}
         with patch("api.router.get_run", AsyncMock(return_value=run)):
             response = await async_client.get("/api/runs/r1", headers=headers)
         assert response.json() == {"job": "example", "status": "running", "error": None}
@@ -97,3 +114,12 @@ class TestRunEndpoints:
         with patch("api.router.get_run", AsyncMock(return_value=None)):
             response = await async_client.get("/api/runs/nope", headers=headers)
         assert response.status_code == 404
+
+    async def test_someone_elses_run_is_404(self, async_client: AsyncClient, headers):
+        run = {"job": "example", "status": "done", "error": None, "owner": "x@y.z"}
+        with patch("api.router.get_run", AsyncMock(return_value=run)):
+            response = await async_client.get("/api/runs/r1", headers=headers)
+        assert response.status_code == 404
+
+
+# stackkit:end auth_iap,auth_firebase

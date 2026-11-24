@@ -204,7 +204,7 @@ The script reads `PROJECT_ID` from the root `.env` and grants:
 <!-- stackkit:begin api -->
 <!-- stackkit:begin jobs -->
 <!-- stackkit:begin database -->
-| `roles/run.jobsExecutorWithOverrides` | Start a background job with its own input (`start_job`), granted to the server's account only | Project |
+| `roles/run.jobsExecutorWithOverrides` | Start a background job with its own input (`start_job`). On App Engine only the server's account has it. On Cloud Run it goes to the Compute Engine default account, which the jobs also run as, so a job could start another job | Project |
 <!-- stackkit:end database -->
 <!-- stackkit:end jobs -->
 <!-- stackkit:end api -->

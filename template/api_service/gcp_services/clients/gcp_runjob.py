@@ -6,7 +6,7 @@ directly. The job reports back through :func:`track_run`, which
 ``job_service/main.py`` calls for every run started this way. Each run is one
 document in ``job_runs``:
 
-- ``job``, ``key``, ``payload``: what was started
+- ``job``, ``key``, ``payload``, ``owner``: what was started, and for whom
 - ``status``: ``queued``, ``running``, ``retrying``, ``done`` or ``failed``
 - ``attempt``, ``error``, ``execution`` (the run's name at Google)
 - ``created_at``, ``updated_at`` and ``deadline_at``
@@ -20,6 +20,7 @@ Each job's ``job_limits/<job>`` document lists the runs it has going, so
 ``start_job`` can refuse a second run with the same ``key``, and more than
 ``limit`` runs at once. Every start of that job changes the same document, so
 Firestore lets them through one at a time however many server instances run.
+When too many arrive at once to get through, ``start_job`` says busy (429).
 
 Users can't read or write either collection: ``firestore.rules`` blocks every
 client, and the server's Admin SDK isn't bound by those rules.
@@ -54,10 +55,15 @@ PAYLOAD_VAR = "JOB_PAYLOAD"
 # Runs of one job that may go at once, unless start_job is told otherwise
 DEFAULT_LIMIT = 10
 # How long a run can take, every try included: its timeout times (retries + 1).
-# job_service.toml's built-in values are 60m and 1 retry; match yours.
+# job_service.toml's built-in values are 60m and 1 retry. Pass deadline= for a
+# job with other values (the backfill example's 6h timeout needs 12 hours).
 DEFAULT_DEADLINE = timedelta(hours=2)
 # Where job_service/emulator.py listens
 EMULATOR_HOST = os.environ.get("CLOUD_RUN_EMULATOR_HOST") or "127.0.0.1:8090"
+# The emulator ignores the project, but the client needs one (gcp/.firebaserc's)
+EMULATOR_PROJECT = "demo-dev"
+# Saving a run's status: tries before giving up and only logging it
+SAVE_TRIES = 3
 UNFINISHED = ("queued", "running", "retrying")
 
 
@@ -113,6 +119,7 @@ async def start_job(
     payload: dict[str, Any] | None = None,
     *,
     key: str | None = None,
+    owner: str | None = None,
     limit: int | None = DEFAULT_LIMIT,
     deadline: timedelta = DEFAULT_DEADLINE,
 ) -> str:
@@ -125,10 +132,12 @@ async def start_job(
     :param payload: The run's input, which the job reads with ``jobs.payload()``
     :param key: Only one run with this key at a time, such as ``f"report:{uid}"``:
         while one is going, its id is returned instead of starting another
+    :param owner: Who started it, such as the caller's email, so only they see it
     :param limit: Runs of this job allowed at once; None for no limit
     :param deadline: How long a run can take, every try included
     :return: The run's id, its document in ``job_runs``
-    :raises JobBusyError: If ``limit`` runs are already going (reply 429)
+    :raises JobBusyError: If ``limit`` runs are already going, or too many
+        starts arrive at once (reply 429)
     :side effects: Writes to ``job_limits`` and ``job_runs``, and starts the job
         at Google (or in ``job_service/emulator.py`` locally)
     """
@@ -151,6 +160,7 @@ async def start_job(
                 "job": job,
                 "key": key,
                 "payload": payload or {},
+                "owner": owner,
                 "status": "queued",
                 "attempt": 0,
                 "error": None,
@@ -162,7 +172,10 @@ async def start_job(
         )
         return None
 
-    existing = await claim(db.transaction())
+    try:
+        existing = await claim(db.transaction())
+    except ValueError as error:  # Firestore gave up: too many starts at once
+        raise JobBusyError(f"Too many starts of {job} at once") from error
     if existing:
         logger.info("Run %s of %s is already going for %s", existing, job, key)
         return existing
@@ -171,7 +184,11 @@ async def start_job(
     except Exception as error:
         await finish_run(job, run_id, "failed", error=f"Couldn't start: {error}")
         raise
-    await run_ref.update({"execution": execution})
+    # The job is going: a failed save here mustn't make the caller start another
+    try:
+        await run_ref.update({"execution": execution})
+    except Exception:
+        logger.exception("Couldn't save run %s's execution name", run_id)
     logger.info("Started %s as run %s (%s)", job, run_id, execution)
     return run_id
 
@@ -212,7 +229,10 @@ def run_at_google(job: str, run_id: str, payload: dict[str, Any]) -> str:
     from google.cloud import run_v2
 
     region = os.environ.get("REGION") or "us-central1"
-    parent = f"projects/{settings.project_id}/locations/{region}"
+    project = settings.project_id
+    if settings.use_emulator:
+        project = project or EMULATOR_PROJECT
+    parent = f"projects/{project}/locations/{region}"
     name = f"{parent}/jobs/{cloud_run_name(job)}"
     env = [
         run_v2.EnvVar(name=RUN_ID_VAR, value=run_id),
@@ -227,7 +247,11 @@ def run_at_google(job: str, run_id: str, payload: dict[str, Any]) -> str:
         ),
     )
     operation = jobs_client().run_job(request=request)
-    return operation.metadata.name
+    try:
+        return operation.metadata.name
+    except Exception:  # It started; the name is only for finding it in the console
+        logger.exception("Started %s, but couldn't read its execution name", job)
+        return ""
 
 
 async def get_run(run_id: str) -> dict[str, Any] | None:
@@ -293,6 +317,27 @@ async def set_status(run_id: str, status: str, **fields: Any) -> None:
     )
 
 
+async def save_quietly(save: Callable[[], Any], what: str) -> None:
+    """
+    Save a run's status, trying a few times, and only log it if that fails.
+
+    Once the job's work is over, failing here would make Cloud Run run it again.
+
+    :param save: Makes the save, such as ``lambda: finish_run(...)``
+    :param what: What's being saved, for the log
+    :side effects: Whatever ``save`` writes
+    """
+    for attempt in range(1, SAVE_TRIES + 1):
+        try:
+            await save()
+            return
+        except Exception:
+            if attempt == SAVE_TRIES:
+                logger.exception("Couldn't save %s", what)
+                return
+            await asyncio.sleep(attempt)
+
+
 async def track_run(job: str, run_id: str, work: Callable[[], Any]) -> None:
     """
     Run a job's ``main()`` and report how it went to its ``job_runs`` document.
@@ -304,21 +349,33 @@ async def track_run(job: str, run_id: str, work: Callable[[], Any]) -> None:
     :param job: The job's module name
     :param run_id: The run's id, from ``JOB_RUN_ID``
     :param work: The job's ``main``, plain or async
-    :raises Exception: Whatever the job raised, after saving it
+    :raises BaseException: Whatever the job raised, after saving it (an exit
+        with code 0 counts as done)
     :side effects: Whatever the job does, and updates to ``job_runs`` and ``job_limits``
     """
     attempt = int(os.environ.get("CLOUD_RUN_TASK_ATTEMPT", "0"))
     retries = int(os.environ.get("MAX_RETRIES", "0"))
     await set_status(run_id, "running", attempt=attempt)
     try:
-        result = work()
+        # A plain main() runs on its own thread, so it may call asyncio.run itself
+        result = await asyncio.to_thread(work)
         if inspect.isawaitable(result):
             await result
-    except Exception as error:
+    except BaseException as error:
+        if isinstance(error, SystemExit) and error.code in (0, None):
+            await save_quietly(
+                lambda: finish_run(job, run_id, "done"), f"run {run_id} done"
+            )
+            raise
         message = f"{type(error).__name__}: {error}"
+        what = f"run {run_id}'s failure"
         if attempt < retries:
-            await set_status(run_id, "retrying", error=message)
+            await save_quietly(
+                lambda: set_status(run_id, "retrying", error=message), what
+            )
         else:
-            await finish_run(job, run_id, "failed", error=message)
+            await save_quietly(
+                lambda: finish_run(job, run_id, "failed", error=message), what
+            )
         raise
-    await finish_run(job, run_id, "done")
+    await save_quietly(lambda: finish_run(job, run_id, "done"), f"run {run_id} done")
