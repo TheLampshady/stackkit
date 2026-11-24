@@ -22,6 +22,18 @@ done
 
 mkdir -p "${FIRESTORE_DATA}"
 
+# stackkit:begin api
+# stackkit:begin jobs
+# stackkit:begin database
+# Runs the jobs the server starts on this computer (job_service/emulator.py)
+JOB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../job_service" && pwd)"
+(cd "$JOB_DIR" && exec uv run --package job_service python emulator.py) &
+JOBS_EMULATOR=$!
+trap 'kill "$JOBS_EMULATOR" 2>/dev/null' EXIT
+# stackkit:end database
+# stackkit:end jobs
+# stackkit:end api
+
 if [ "$EMPTY_MODE" = true ]; then
     echo "Starting emulators (empty mode)..."
     firebase emulators:start

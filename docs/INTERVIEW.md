@@ -93,7 +93,7 @@ The brief answers 1, 2 (no page), 7 (a timer) and 6 (AI, one job). A report with
 | when a timer runs (assumed) | from the brief, in the computer's time zone | the job's timer in `job_service/job_service.toml` |
 | 12 | someone else, or not sure / me | the hand-over includes a note to send / the steps themselves |
 
-Without asking: `notebooks` is removed, `http_tests` goes with `api`, and any kind of sign-in keeps `api`. A static site always goes on App Engine (no `cloud_run`, no `always_on`).
+Without asking: `notebooks` is removed, `http_tests` goes with `api`, any kind of sign-in keeps `api`. A project with a server, jobs and a database also gets the server's way to start its jobs (`start_job`). A static site always goes on App Engine (no `cloud_run`, no `always_on`).
 
 ## The server or background work
 
@@ -107,7 +107,7 @@ flowchart TD
     B -- no --> C["A server: keep api"]
     C --> D{"7b · Long work?"}
     D -- "(a) no, it's quick" --> N["remove jobs"]
-    D -- "(b) yes, a person waits" --> W["keep jobs and database:<br/>a route starts the job and<br/>the page checks a record"]
+    D -- "(b) yes, a person waits" --> W["keep jobs and database:<br/>a route starts the job (start_job)<br/>and the page asks how it's going"]
     D -- "(c) yes, nobody waits" --> T["keep jobs"]
 ```
 
